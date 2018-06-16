@@ -6,13 +6,13 @@ var file = "fornax.csv" // Input file
 var fileJSON = "fornax.json" // Output file
 var fileMatrix = "matrix.json" // Path of the comparison matrix file
 var reportNumber = 2 // Number of the test, in the historic series of test. Starting with 1 for mtlynch's report, 2 for Fornax's...
-var testName = "1.3.3 - Fornax" // Example: "1.3.1 - mtlynch"
+var testName = "1.3.3 - fornax" // Example: "1.3.1 - mtlynch"
 var testType = "Load test" // Example: "Load test"
 var testConditions = "10 GB files" // Size of the uploaded files and other differential key aspects of the test, as a short summary. Examples: "40 MB files" (mtlynch's), "10 GB files" (Fornax's)
 var siaValue = 0.01315 // Siacoin value at the time of the test. Check CoinMarketCap
 
 // IF THE CSV HAS AN INTERVAL < 1 MINUTE, adjust the number so it checks every x entries. If interval = 1 minute, let "skip" in 2, if 5 seconds, "skip" = 20. Avoids the function to chocke with the csv file processing
-var skip = 20
+var skip = 5
 
 
 console.log("---------------------------------------------")
@@ -209,13 +209,14 @@ function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) 
         loop(array, (n + skip), newArray, prevTime, prevStorage, zeroTime, matrixEntry)
     } else {
         // Final results for the total uploaded data in the test
+        var totalUploaded = array[n][4] / 1000000000000
         var secondsToFinal = (time - zeroTime) / 1000 // In seconds
         var speedToFinal = ((array[n][4] / 1000000) / secondsToFinal).toFixed(2) // Speed in MBps
         var speedToFinalFiles = ((array[n][5] / 1000000) / secondsToFinal).toFixed(2) // Speed in MBps
         var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
-        var TBmonthPlusFees = (costPlusFees / (10 * 3)).toFixed(2) // Divided by 3 months and 10 TB
-        var TBmonthMinusFees = (costMinusFees / (10 * 3)).toFixed(2) // Divided by 3 months and 10 TB
+        var TBmonthPlusFees = (costPlusFees / (totalUploaded * 3)).toFixed(2) // Divided by 3 months and 10 TB
+        var TBmonthMinusFees = (costMinusFees / (totalUploaded * 3)).toFixed(2) // Divided by 3 months and 10 TB
         
         console.log("Average speed for the whole test: " + speedToFinal + " MBps")
         matrixEntry.avgUploadSpeedTotal = speedToFinal
@@ -248,7 +249,7 @@ function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) 
             "contracts": array[n][1],
             "spent": costPlusFees,
             "time": (time - zeroTime) / 3600000,
-            "dollarTbMonth": (TBmonthMinusFees * siaValue).toFixed(2),
+            "dollarTbMonth": (TBmonthPlusFees * siaValue).toFixed(2),
             "uploadFiles": speedToFinalFiles,
             "uploadAbsolut":speedToFinal,
             "crashes": "-",
