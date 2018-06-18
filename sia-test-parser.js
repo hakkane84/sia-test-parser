@@ -6,11 +6,20 @@ var file = "fornax.csv" // Input file
 var fileJSON = "fornax.json" // Output file
 var fileMatrix = "matrix.json" // Path of the comparison matrix file
 var reportNumber = 2 // Number of the test, in the historic series of test. Starting with 1 for mtlynch's report, 2 for Fornax's...
-var testName = "1.3.3 - fornax" // Example: "1.3.1 - mtlynch"
+var testName = "1.3.3 - Fornax" // Example: "1.3.1 - mtlynch"
 var testType = "Load test" // Example: "Load test"
 var testConditions = "10 GB files" // Size of the uploaded files and other differential key aspects of the test, as a short summary. Examples: "40 MB files" (mtlynch's), "10 GB files" (Fornax's)
 var siaValue = 0.01315 // Siacoin value at the time of the test. Check CoinMarketCap
-
+var initialBalance = 5000 // Initial balance on the wallet
+// Other manual variables for the technical sheet
+var testVersion = "1.3.3"
+var testTester = "Fornax"
+var testSystem = "-"
+var testFilesType = "Synthetic 10GB files"
+var testTerminateCondition = "10 GB (file bytes) uploaded"
+var testCrashes = "-"
+var testNotes = "-"
+var testLink = "-"
 // IF THE CSV HAS AN INTERVAL < 1 MINUTE, adjust the number so it checks every x entries. If interval = 1 minute, let "skip" in 2, if 5 seconds, "skip" = 20. Avoids the function to chocke with the csv file processing
 var skip = 5
 
@@ -43,38 +52,78 @@ stream1.on('end', function() {
     }
 
     // 2- Comaprison matrix creation
+    // "extra" Represent balances missing from the wallet and the renter, but that have vanished from the wallet nevertheless
     var matrixEntry = { // Will save the values for the comparison matrix
         "test": testName,
         "type": testType,
         "date": new Date(array[0][0]).getTime(),
         "conditions": testConditions,
         "contractsFormationTime": 0,
+        "totalUploaded": 0,
+        "totalUploaded3x": 0,
+        "totalFiles": 0,
         "avgUploadSpeedTo1TB": 0,
         "SCcostMonth1TBfees": 0,
         "USDcostMonth1TBfees": 0,
         "SCcostMonth1TBnofees": 0,
         "USDcostMonth1TBnofees": 0,
+        "SCcostMonth1TBextra": 0,
+        "USDcostMonth1TBextra": 0,
         "avgUploadSpeedTo2TB": 0,
         "SCcostMonth2TBfees": 0,
         "USDcostMonth2TBfees": 0,
         "SCcostMonth2TBnofees": 0,
         "USDcostMonth2TBnofees": 0,
+        "SCcostMonth2TBextra": 0,
+        "USDcostMonth2TBextra": 0,
         "avgUploadSpeedTo10TB": 0,
         "SCcostMonth10TBfees": 0,
         "USDcostMonth10TBfees": 0,
         "SCcostMonth10TBnofees": 0,
         "USDcostMonth10TBnofees": 0,
+        "SCcostMonth10TBextra": 0,
+        "USDcostMonth10TBextra": 0,
         "avgUploadSpeedTotal": 0,
         "SCcostMonthTotalFees": 0,
         "USDcostMonthTotalFees": 0,
         "SCcostMonthTotalNofees": 0,
         "USDcostMonthTotalNofees": 0,
-        "totalUploaded": 0
+        "SCcostMonthTotalExtra": 0,
+        "USDcostMonthTotalExtra": 0,
+        "avgUploadSpeedTo1TB3x": 0,
+        "SCcostMonth1TBfees3x": 0,
+        "USDcostMonth1TBfees3x": 0,
+        "SCcostMonth1TBnofees3x": 0,
+        "USDcostMonth1TBnofees3x": 0,
+        "SCcostMonth1TBextra3x": 0,
+        "USDcostMonth1TBextra3x": 0,
+        "avgUploadSpeedTo2TB3x": 0,
+        "SCcostMonth2TBfees3x": 0,
+        "USDcostMonth2TBfees3x": 0,
+        "SCcostMonth2TBnofees3x": 0,
+        "USDcostMonth2TBnofees3x": 0,
+        "SCcostMonth2TBextra3x": 0,
+        "USDcostMonth2TBextra3x": 0,
+        "avgUploadSpeedTo10TB3x": 0,
+        "SCcostMonth10TBfees3x": 0,
+        "USDcostMonth10TBfees3x": 0,
+        "SCcostMonth10TBnofees3x": 0,
+        "USDcostMonth10TBnofees3x": 0,
+        "SCcostMonth10TBextra3x": 0,
+        "USDcostMonth10TBextra3x": 0,
+        "avgUploadSpeedTotal3x": 0,
+        "SCcostMonthTotalFees3x": 0,
+        "USDcostMonthTotalFees3x": 0,
+        "SCcostMonthTotalNofees3x": 0,
+        "USDcostMonthTotalNofees3x": 0,
+        "SCcostMonthTotalExtra3x": 0,
+        "USDcostMonthTotalExtra3x": 0,
     }
 
     // 3- First entry
     var newArray = []
     var prevStorage = 0
+    var prevStorageFileBytes = 0
     var prevContracts = 0
     var prevTime = new Date(array[0][0]).getTime()
     var zeroTime = new Date(array[0][0]).getTime()
@@ -82,7 +131,7 @@ stream1.on('end', function() {
     newArray.push(entry)
 
     // 4- Loop invoking. Starts in element 1
-    loop(array, 1, newArray, prevTime, prevStorage, zeroTime, matrixEntry)
+    loop(array, 1, newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry)
  
     // 5 - Saving the files
     console.log("Creating the abbreviated report '" + fileJSON + "' with " + newArray.length + " entries")
@@ -122,7 +171,7 @@ stream1.on('end', function() {
 })
 
 
-function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) {
+function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry) {
     var time = new Date(array[n][0]).getTime()
     if (time >= (prevTime + 900000)) { // Only takes one entry every 15 minutes (900000 milliseconds)
         entry = createEntry(array[n])
@@ -140,13 +189,20 @@ function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) 
     if (array[n][4] >= 1000000000000 && prevStorage < 1000000000000) {
         // If we reached 1TB
         var secondsTo1TB = (time - zeroTime) / 1000 // In seconds
-        var speedTo1TB = ((array[n][4] / 1000000) / secondsTo1TB).toFixed(2) // Speed in MBps
+        var speedTo1TB = ((array[n][4] / 1000000) / secondsTo1TB * 8).toFixed(2) // Speed in Mbps
         var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var TBmonthPlusFees = (costPlusFees / 3).toFixed(2) // Divided by 3 months
         var TBmonthMinusFees = (costMinusFees / 3).toFixed(2) // Divided by 3 months
+
+        // Extra = Initial - wallet_balance - remaining_renter_funds - costPlusFees
+        var costExtra = initialBalance - (array[n][13]/1000000000000000000000000) - (array[n][12]/1000000000000000000000000) - costPlusFees
+        if (costExtra < 0) { costExtra = 0}
+        var TBmonthExtra = (costExtra / 3).toFixed(2) // Divided by 3 months
+        matrixEntry.SCcostMonth1TBextra = TBmonthExtra
+        matrixEntry.USDcostMonth1TBextra = (TBmonthExtra * siaValue).toFixed(2)
         
-        console.log("Average speed for 1TB upload: " + speedTo1TB + " MBps")
+        console.log("Average speed for 1TB upload: " + speedTo1TB + " Mbps")
         matrixEntry.avgUploadSpeedTo1TB = speedTo1TB
         console.log("Cost for 1TB upload (PLUS fees): " + TBmonthPlusFees + " SC/Tb/month")
         matrixEntry.SCcostMonth1TBfees = TBmonthPlusFees
@@ -158,16 +214,46 @@ function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) 
         matrixEntry.USDcostMonth1TBnofees = (TBmonthMinusFees * siaValue).toFixed(2)
     }
 
+    if (array[n][5] >= 1000000000000 && prevStorageFileBytes < 1000000000000) {
+        // If we reached 1TB (IN FILE BYTES)
+        var secondsTo1TB = (time - zeroTime) / 1000 // In seconds
+        var speedTo1TB = ((array[n][5] / 1000000) / secondsTo1TB * 8).toFixed(2) // Speed in Mbps
+        var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
+        var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
+        var TBmonthPlusFees = (costPlusFees / 3).toFixed(2) // Divided by 3 months
+        var TBmonthMinusFees = (costMinusFees / 3).toFixed(2) // Divided by 3 months
+
+        // Extra = Initial - wallet_balance - remaining_renter_funds - costPlusFees
+        var costExtra = initialBalance - (array[n][13]/1000000000000000000000000) - (array[n][12]/1000000000000000000000000) - costPlusFees
+        if (costExtra < 0) { costExtra = 0}
+        var TBmonthExtra = (costExtra / 3).toFixed(2) // Divided by 3 months
+        matrixEntry.SCcostMonth1TBextra3x = TBmonthExtra
+        matrixEntry.USDcostMonth1TBextra3x = (TBmonthExtra * siaValue).toFixed(2)
+        
+        matrixEntry.avgUploadSpeedTo1TB3x = speedTo1TB
+        matrixEntry.SCcostMonth1TBfees3x = TBmonthPlusFees
+        matrixEntry.USDcostMonth1TBfees3x = (TBmonthPlusFees * siaValue).toFixed(2)
+        matrixEntry.SCcostMonth1TBnofees3x = TBmonthMinusFees
+        matrixEntry.USDcostMonth1TBnofees3x = (TBmonthMinusFees * siaValue).toFixed(2)
+    }
+
     if (array[n][4] >= 2000000000000 && prevStorage < 2000000000000) {
         // If we reached 2TB
         var secondsTo2TB = (time - zeroTime) / 1000 // In seconds
-        var speedTo2TB = ((array[n][4] / 1000000) / secondsTo2TB).toFixed(2) // Speed in MBps
+        var speedTo2TB = ((array[n][4] / 1000000) / secondsTo2TB * 8).toFixed(2) // Speed in Mbps
         var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var TBmonthPlusFees = (costPlusFees / (2 * 3)).toFixed(2) // Divided by 3 months and 2 TB
         var TBmonthMinusFees = (costMinusFees / (2 * 3)).toFixed(2) // Divided by 3 months and 2 TB
+
+        // Extra = Initial - wallet_balance - remaining_renter_funds - costPlusFees
+        var costExtra = initialBalance - (array[n][13]/1000000000000000000000000) - (array[n][12]/1000000000000000000000000) - costPlusFees
+        if (costExtra < 0) { costExtra = 0}
+        var TBmonthExtra = (costExtra / (2 * 3)).toFixed(2) // Divided by 3 months
+        matrixEntry.SCcostMonth2TBextra = TBmonthExtra
+        matrixEntry.USDcostMonth2TBextra = (TBmonthExtra * siaValue).toFixed(2)
         
-        console.log("Average speed for 2TB upload: " + speedTo2TB + " MBps")
+        console.log("Average speed for 2TB upload: " + speedTo2TB + " Mbps")
         matrixEntry.avgUploadSpeedTo2TB = speedTo2TB
         console.log("Cost for 2TB upload (PLUS fees): " + TBmonthPlusFees + " SC/Tb/month")
         matrixEntry.SCcostMonth2TBfees = TBmonthPlusFees
@@ -179,16 +265,46 @@ function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) 
         matrixEntry.USDcostMonth2TBnofees = (TBmonthMinusFees * siaValue).toFixed(2)
     }
 
+    if (array[n][5] >= 2000000000000 && prevStorageFileBytes < 2000000000000) {
+        // If we reached 2TB (IN FILE BYTES)
+        var secondsTo2TB = (time - zeroTime) / 1000 // In seconds
+        var speedTo2TB = ((array[n][5] / 1000000) / secondsTo2TB * 8).toFixed(2) // Speed in Mbps
+        var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
+        var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
+        var TBmonthPlusFees = (costPlusFees / (2 * 3)).toFixed(2) // Divided by 3 months and 2 TB
+        var TBmonthMinusFees = (costMinusFees / (2 * 3)).toFixed(2) // Divided by 3 months and 2 TB
+
+        // Extra = Initial - wallet_balance - remaining_renter_funds - costPlusFees
+        var costExtra = initialBalance - (array[n][13]/1000000000000000000000000) - (array[n][12]/1000000000000000000000000) - costPlusFees
+        if (costExtra < 0) { costExtra = 0}
+        var TBmonthExtra = (costExtra / (2 * 3)).toFixed(2) // Divided by 3 months
+        matrixEntry.SCcostMonth2TBextra3x = TBmonthExtra
+        matrixEntry.USDcostMonth2TBextra3x = (TBmonthExtra * siaValue).toFixed(2)
+        
+        matrixEntry.avgUploadSpeedTo2TB3x = speedTo2TB
+        matrixEntry.SCcostMonth2TBfees3x = TBmonthPlusFees
+        matrixEntry.USDcostMonth2TBfees3x = (TBmonthPlusFees * siaValue).toFixed(2)
+        matrixEntry.SCcostMonth2TBnofees3x = TBmonthMinusFees
+        matrixEntry.USDcostMonth2TBnofees3x = (TBmonthMinusFees * siaValue).toFixed(2)
+    }
+
     if (array[n][4] >= 10000000000000 && prevStorage < 10000000000000) {
         // If we reached 10TB
         var secondsTo10TB = (time - zeroTime) / 1000 // In seconds
-        var speedTo10TB = ((array[n][4] / 1000000) / secondsTo10TB).toFixed(2) // Speed in MBps
+        var speedTo10TB = ((array[n][4] / 1000000) / secondsTo10TB * 8).toFixed(2) // Speed in Mbps
         var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var TBmonthPlusFees = (costPlusFees / (10 * 3)).toFixed(2) // Divided by 3 months and 10 TB
         var TBmonthMinusFees = (costMinusFees / (10 * 3)).toFixed(2) // Divided by 3 months and 10 TB
+
+        // Extra = Initial - wallet_balance - remaining_renter_funds - costPlusFees
+        var costExtra = initialBalance - (array[n][13]/1000000000000000000000000) - (array[n][12]/1000000000000000000000000) - costPlusFees
+        if (costExtra < 0) { costExtra = 0}
+        var TBmonthExtra = (costExtra / (10 * 3)).toFixed(2) // Divided by 3 months
+        matrixEntry.SCcostMonth10TBextra = TBmonthExtra
+        matrixEntry.USDcostMonth10TBextra = (TBmonthExtra * siaValue).toFixed(2)
         
-        console.log("Average speed for 10TB upload: " + speedTo10TB + " MBps/Tb/month")
+        console.log("Average speed for 10TB upload: " + speedTo10TB + " Mbps/Tb/month")
         matrixEntry.avgUploadSpeedTo10TB = speedTo10TB
         console.log("Cost for 10TB upload (PLUS fees): " + TBmonthPlusFees + " SC/Tb/month")
         matrixEntry.SCcostMonth10TBfees = TBmonthPlusFees
@@ -200,25 +316,56 @@ function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) 
         matrixEntry.USDcostMonth10TBnofees = (TBmonthMinusFees * siaValue).toFixed(2)
     }
 
+    if (array[n][5] >= 10000000000000 && prevStorageFileBytes < 10000000000000) {
+        // If we reached 10TB
+        var secondsTo10TB = (time - zeroTime) / 1000 // In seconds
+        var speedTo10TB = ((array[n][5] / 1000000) / secondsTo10TB * 8).toFixed(2) // Speed in Mbps
+        var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
+        var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
+        var TBmonthPlusFees = (costPlusFees / (10 * 3)).toFixed(2) // Divided by 3 months and 10 TB
+        var TBmonthMinusFees = (costMinusFees / (10 * 3)).toFixed(2) // Divided by 3 months and 10 TB
+
+        // Extra = Initial - wallet_balance - remaining_renter_funds - costPlusFees
+        var costExtra = initialBalance - (array[n][13]/1000000000000000000000000) - (array[n][12]/1000000000000000000000000) - costPlusFees
+        if (costExtra < 0) { costExtra = 0}
+        var TBmonthExtra = (costExtra / (10 * 3)).toFixed(2) // Divided by 3 months
+        matrixEntry.SCcostMonth10TBextra3x = TBmonthExtra
+        matrixEntry.USDcostMonth10TBextra3x = (TBmonthExtra * siaValue).toFixed(2)
+        
+        matrixEntry.avgUploadSpeedTo10TB3x = speedTo10TB
+        matrixEntry.SCcostMonth10TBfees3x = TBmonthPlusFees
+        matrixEntry.USDcostMonth10TBfees3x = (TBmonthPlusFees * siaValue).toFixed(2)
+        matrixEntry.SCcostMonth10TBnofees3x = TBmonthMinusFees
+        matrixEntry.USDcostMonth10TBnofees3x = (TBmonthMinusFees * siaValue).toFixed(2)
+    }
+
     // Updating variables
     prevStorage = array[n][4]
+    prevStorageFileBytes = array[n][5]
     prevContracts = parseInt(array[n][1])
     
     // Repeat loop if we are not at the end of the array
     if (n < (array.length - 20)) {
-        loop(array, (n + skip), newArray, prevTime, prevStorage, zeroTime, matrixEntry)
+        loop(array, (n + skip), newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry)
     } else {
         // Final results for the total uploaded data in the test
         var totalUploaded = array[n][4] / 1000000000000
         var secondsToFinal = (time - zeroTime) / 1000 // In seconds
-        var speedToFinal = ((array[n][4] / 1000000) / secondsToFinal).toFixed(2) // Speed in MBps
-        var speedToFinalFiles = ((array[n][5] / 1000000) / secondsToFinal).toFixed(2) // Speed in MBps
+        var speedToFinal = ((array[n][4] / 1000000) / secondsToFinal * 8).toFixed(2) // Speed in Mbps
+        var speedToFinal3x = ((array[n][5] / 1000000) / secondsToFinal * 8).toFixed(2) // Speed in Mbps
         var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var TBmonthPlusFees = (costPlusFees / (totalUploaded * 3)).toFixed(2) // Divided by 3 months and 10 TB
         var TBmonthMinusFees = (costMinusFees / (totalUploaded * 3)).toFixed(2) // Divided by 3 months and 10 TB
+
+        // Extra = Initial - wallet_balance - remaining_renter_funds - costPlusFees
+        var costExtra = initialBalance - (array[n][13]/1000000000000000000000000) - (array[n][12]/1000000000000000000000000) - costPlusFees
+        if (costExtra < 0) { costExtra = 0}
+        var TBmonthExtra = (costExtra / (totalUploaded * 3)).toFixed(2) // Divided by 3 months
+        matrixEntry.SCcostMonthTotalExtra = TBmonthExtra
+        matrixEntry.USDcostMonthTotalExtra = (TBmonthExtra * siaValue).toFixed(2)
         
-        console.log("Average speed for the whole test: " + speedToFinal + " MBps")
+        console.log("Average speed for the whole test: " + speedToFinal + " Mbps")
         matrixEntry.avgUploadSpeedTotal = speedToFinal
         console.log("Cost for the whole test (PLUS fees): " + TBmonthPlusFees + " SC/Tb/month")
         matrixEntry.SCcostMonthTotalFees = TBmonthPlusFees
@@ -229,18 +376,33 @@ function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) 
         //console.log("Cost for the whole test (MINUS fees): " + (TBmonthMinusFees * siaValue).toFixed(2) + " USD/Tb/month")
         matrixEntry.USDcostMonthTotalNofees = (TBmonthMinusFees * siaValue).toFixed(2)
         matrixEntry.totalUploaded = (array[n][4] / 1000000000000).toFixed(2)
+        matrixEntry.totalFiles = array[n][2]
+
+        // File bytes - 3x redundancy stats
+        var totalUploaded3x = array[n][5] / 1000000000000
+        var TBmonthPlusFees3x = (costPlusFees / (totalUploaded3x * 3)).toFixed(2) // Divided by 3 months and 10 TB
+        var TBmonthMinusFees3x = (costMinusFees / (totalUploaded3x * 3)).toFixed(2) // Divided by 3 months and 10 TB
+        var TBmonthExtra3x = (costExtra / (totalUploaded3x * 3)).toFixed(2) // Divided by 3 months
+        matrixEntry.SCcostMonthTotalExtra3x = TBmonthExtra3x
+        matrixEntry.USDcostMonthTotalExtra3x = (TBmonthExtra3x * siaValue).toFixed(2)
+        matrixEntry.avgUploadSpeedTotal3x = speedToFinal3x
+        matrixEntry.SCcostMonthTotalFees3x = TBmonthPlusFees3x
+        matrixEntry.USDcostMonthTotalFees3x = (TBmonthPlusFees3x * siaValue).toFixed(2)
+        matrixEntry.SCcostMonthTotalNofees3x = TBmonthMinusFees3x
+        matrixEntry.USDcostMonthTotalNofees3x = (TBmonthMinusFees3x * siaValue).toFixed(2)
+        matrixEntry.totalUploaded3x = totalUploaded3x
 
         // Technical sheet file
         // Print the total amount uploaded to Finish the report
         var totalUploaded = (array[n][4] / 1000000000000).toFixed(2)
         var totalUploadedFiles = (array[n][5] / 1000000000000).toFixed(2)
         var tsEntry = {
-            "type": "-",
-            "version": "-",
-            "tester": "-",
-            "system": "-",
-            "filesType": "-",
-            "terminateCondition": "-",
+            "type": testType,
+            "version": testVersion,
+            "tester": testTester,
+            "system": testSystem,
+            "filesType": testFilesType,
+            "terminateCondition": testTerminateCondition,
             "date": zeroTime,
             "siaUSDprice": siaValue,
             "uploadedFile": totalUploadedFiles,
@@ -250,11 +412,14 @@ function loop(array, n, newArray, prevTime, prevStorage, zeroTime, matrixEntry) 
             "spent": costPlusFees,
             "time": (time - zeroTime) / 3600000,
             "dollarTbMonth": (TBmonthPlusFees * siaValue).toFixed(2),
-            "uploadFiles": speedToFinalFiles,
+            "dollarTbMonthUnreported": (TBmonthExtra * siaValue).toFixed(2),
+            "dollarTbMonth3x": (TBmonthPlusFees3x * siaValue).toFixed(2),
+            "dollarTbMonthUnreported3x": (TBmonthExtra3x * siaValue).toFixed(2),
+            "uploadFiles": speedToFinal3x,
             "uploadAbsolut":speedToFinal,
-            "crashes": "-",
-            "notes": "-",
-            "link": "-"
+            "crashes": testCrashes,
+            "notes": testNotes,
+            "link": testLink
         }
         console.log("")
         console.log("Creating the technical sheet report:" + tsFile)
