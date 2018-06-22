@@ -1,0 +1,1313 @@
+<html>
+    <head>
+        <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script src = "https://code.highcharts.com/highcharts.js"></script>
+        <script src = "https://code.highcharts.com/modules/exporting.js"></script>
+        
+        <link rel="stylesheet" type="text/css" href="new_styles.css">
+        <link rel="stylesheet" type="text/css" href="new_table4.css">
+        <link href="https://fonts.googleapis.com/css?family=Lato:400,400i,700,900" rel="stylesheet">
+        
+        <meta name="viewport" content="width=600">
+
+        <style>
+            /*** Loading animation **/
+            .loader {
+                border: 16px solid #d7e3e1; /* Light grey */
+                border-top: 16px solid #2ccf75; /* Blue */
+                border-bottom: 16px solid #2ccf75;
+                border-radius: 50%;
+                width: 120px;
+                height: 120px;
+                animation: spin 2s linear infinite;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            button {
+                background-color: #8d8d8d;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                margin: 0px 0px 20px 0px;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #2ccf75;
+                color: white
+            }
+        </style>
+
+    </head>
+      
+    <body>
+            
+            <div class="main-outer">
+                <div class="main">
+                    <div class="content">
+
+                        <div class="sub-header-spacer" style="height:0"></div>
+
+                        <div class="disclaimer" style="text-align: left; color: #7e9489; font-size: 110%; max-width: 1150; margin: 0 auto; padding: 50 0 100 0">
+                            <span><i>
+                                The shown tests are performed and funded by the Sia Test App Community (STAC): an all-volunteer group wanting to provide the Sia Community 
+                                and data storage developers worldwide with credible, comprehensive, actionable data about the current state of the Sia Cloud Storage Network. 
+                                These tests are based and inspired on the <a href="https://github.com/mtlynch/sia_load_tester/" style="color:#7e9489; text-decoration: underline;">testing software</a> developed by Michael Lynch.
+                            </i></span>
+                        </div>
+
+                        <div id="timeline" class="timeline" style="max-width: 1150; margin: 0 auto"></div>
+                        
+                        <div class="buttons" style="max-width: 1150; margin: 0 auto">
+                            <button onclick="matrixReload(1, 1)" type="button">With 3x file redundancy (Sia default)</button>
+                            <button onclick="matrixReload(0, 1)" type="button">Without file redundancy</button>
+                        </div>
+
+                        <div id="content2" class="chart" style="max-width: 1150; margin: 0 auto; padding: 0 0 20 0; height: 400"></div>
+
+                        <div id="content2b" class="chart" style="max-width: 1150; margin: 0 auto; padding: 0 0 100 0; height: 400;">
+                            <div id="content2b1" class="chart" style="width: 565; height: 400; float: left; margin: 0 20 20 0"></div>
+                            <div id="content2b2" class="chart" style="width: 565; height: 400; background-color: #ffffff; float: left; margin: 0 0 100 0">
+                                <div id="content2b2a" class="chart" style="width: 180; height: 400; float: left; margin: 0 0 100 0"></div>
+                                <div id="content2b2b" class="chart" style="width: 180; height: 400; float: right; margin: 0 0 100 0"></div>
+                                <div id="content2b2c" class="chart" style="width: 180; height: 400; float: right; margin: 0 0 100 0"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="content3"></div>
+
+                        <div id="content4"></div>
+                        
+                        <div id="content5" class="chart" style="max-width: 1150; margin: 0 auto; padding: 100 0 0 0; height: 500"></div>
+
+                        <div id="content5b" class="chart" style="max-width: 1150; margin: 0 auto; padding: 100 0 0 0; height: 500"></div>
+
+                        <div id="content6" class="chart" style="max-width: 1150; margin: 0 auto; padding: 100 0 0 0; height: 500"></div>
+
+                        <div id="content7"></div>
+
+
+                        <p style="margin: 80 auto"></p>
+
+                        <!-- Loading animation -->
+                        <div class="loader" id="loader" style="margin: 50 auto;"></div> 
+
+
+                        <script type="text/javascript">
+                            // Hiding loader by default
+                            document.getElementById("loader").style.display = 'none'
+                            document.getElementById("content5").style.display = 'none'
+                            document.getElementById("content5b").style.display = 'none'
+                            document.getElementById("content6").style.display = 'none'
+
+                            // TIMELINE
+                            google.charts.load('current', {'packages':['timeline']});
+                            google.charts.setOnLoadCallback(drawChart);
+                            function drawChart() {
+
+                                var container = document.getElementById('timeline');
+                                var chart = new google.visualization.Timeline(container);
+                                var dataTable = new google.visualization.DataTable();
+
+                                dataTable.addColumn({ type: 'string', id: 'President' });
+                                dataTable.addColumn({ type: 'string', id: 'Name' });
+                                dataTable.addColumn({ type: 'date', id: 'Start' });
+                                dataTable.addColumn({ type: 'date', id: 'End' });
+                                dataTable.addRows([
+                                [ 'Sia version', "1.3.1", new Date(2018, 0, 21), new Date(2018, 2, 14) ],
+                                [ 'Sia version', "1.3.2", new Date(2018, 2, 14), new Date(2018, 5, 6) ],
+                                [ 'Sia version', "1.3.3", new Date(2018, 5, 6), new Date() ],
+                                [ 'Load test', "mtlynch - v1.3.1", new Date(2018, 2, 22),  new Date(2018, 3, 5) ],
+                                [ 'Load test', "STAC/Fornax - v1.3.3",  new Date(2018, 5, 11),  new Date(2018, 5, 18) ]]);
+
+                                var options = {
+                                    timeline: {
+                                        //showBarLabels: false, 
+                                    },
+                                    colors: [
+                                        '#7ccfa2', 
+                                        '#26bf6b', 
+                                        '#0f8845', 
+                                        "#d5824b",
+                                        "#4083a5"
+                                    ],
+                                };
+
+                                chart.draw(dataTable, options);
+                            }
+
+                            // TABLE OF TESTS
+                            $.getJSON('../benchmarks/matrix.json', function(table) {
+                                var div = document.createElement('div');
+                                    div.className = 'row';
+                                    var tableCode = '<table id="table-fill" class="table-fill" style="margin: 0 auto; padding: 0 auto; max-width: 1150px">' 
+                                        + '<thead>'
+                                            + '<tr style="background:#ffffff;">'
+                                                + '<th colspan="5" class="text-left" style=" background:#8d8d8d; border-right: 0px solid #D1D1D1">'
+                                                    + '<span style="vertical-align:center; margin: 0 0 0 5"><strong><font size="3" color="white">Performed tests (<u>Click for full information</u>):</font></strong></span>'
+                                                + '</th>'
+                                            + '</tr>'
+                                table = table.reverse()
+                                for (var n = 0; n < table.length; n++) {
+                                    var date = timeConverter(table[n].date)
+                                    tableCode = tableCode
+                                    + '<tr onclick="loadBenchmark(' + (table.length - n) + ')" style="cursor: pointer">'
+                                            + '<td style="height: 40">'
+                                                + '<span style="vertical-align:center; border-right: 0px;"><font size="3"> ' + table[n].type + ' </font></span>'
+                                            + '</td>'
+                                            + '<td style="height: 40">'
+                                                + '<span style="vertical-align:center; border-right: 0px;"><font size="3"> ' + table[n].test + ' </font></span>'
+                                            + '</td>'
+                                            + '<td style="height: 40">'
+                                                + '<span style="vertical-align:center; border-right: 0px;"><font size="3"> ' + date + ' </font></span>'
+                                            + '</td>'
+                                            + '<td style="height: 40">'
+                                                + '<span style="vertical-align:center; border-right: 0px;"><font size="3"> ' + table[n].conditions + '</font></span>'
+                                            + '</td>'
+                                        + '</tr>'
+                                }
+                            
+                                // This closes the table
+                                tableCode = tableCode + '</thead> </table>'
+                                div.innerHTML = tableCode
+                                document.getElementById('content3').appendChild(div);
+
+                                var button = 1
+                                matrixCharts(table, button, 0)
+
+                                adjustWidth()
+                            })
+
+                            function matrixReload(button) {
+                                // Reloads the matrix file to render and renders 1x or 3x redundancy charts on selection of a button
+                                $.getJSON('../benchmarks/matrix.json', function(table) {
+                                    matrixCharts(table, button, 1)
+                                })
+                            }
+                            
+                            
+                            // Renders the comparison charts on content2 container div
+                            function matrixCharts(matrix, button, buttonFlag) {
+                                
+                                // Processing the matrix
+                                var priceMatrix = []
+                                var speedMatrix = []
+                                var uploadedMatrix = []
+                                var contractsMatrix = []
+                                var efficiencyMatrix = []
+                                
+                                if (button == 0) {
+                                    var priceTitle = "<b>Storage costs per TB (without file redundancy)</b>"
+                                    var speedTitle = "<b>Average upload speed (without file redundancy)</b>"
+                                    for (var n = 0; n < matrix.length; n++) {
+                                        priceEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth1TBfees) + parseFloat(matrix[n].USDcostMonth1TBextra)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth2TBfees) + parseFloat(matrix[n].USDcostMonth2TBextra)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth10TBfees) + parseFloat(matrix[n].USDcostMonth10TBextra)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonthTotalFees) + parseFloat(matrix[n].USDcostMonthTotalExtra)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth1TBnofees) + parseFloat(matrix[n].USDcostMonth1TBextra)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth2TBnofees) + parseFloat(matrix[n].USDcostMonth2TBextra)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth10TBnofees) + parseFloat(matrix[n].USDcostMonth10TBextra)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonthTotalNofees) + parseFloat(matrix[n].USDcostMonthTotalExtra)).toFixed(2))
+                                            ],
+                                            stack: matrix[n].test
+                                        }
+                                        priceMatrix.push(priceEntry)
+
+                                        speedEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat(matrix[n].avgUploadSpeedTo1TB),
+                                                parseFloat(matrix[n].avgUploadSpeedTo2TB),
+                                                parseFloat(matrix[n].avgUploadSpeedTo10TB),
+                                                parseFloat(matrix[n].avgUploadSpeedTotal),
+                                            ]
+                                        }
+                                        speedMatrix.push(speedEntry)
+
+                                        uploadedEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat(matrix[n].totalUploaded),
+                                            ]
+                                        }
+                                        uploadedMatrix.push(uploadedEntry)
+                                        
+                                        contractsEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat(matrix[n].contractsFormationTime),
+                                            ]
+                                        }
+                                        contractsMatrix.push(contractsEntry)
+
+                                        efficiencyEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat(matrix[n].efficiency),
+                                            ]
+                                        }
+                                        efficiencyMatrix.push(efficiencyEntry)
+                                    }
+                                
+                                } else if (button == 1) {
+                                    var priceTitle = "<b>Storage costs per TB (with 3x file redundancy)</b>"
+                                    var speedTitle = "<b>Average upload speed (with 3x file redundancy)</b>"
+                                    for (var n = 0; n < matrix.length; n++) {
+                                        priceEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth1TBfees3x) + parseFloat(matrix[n].USDcostMonth1TBextra3x)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth2TBfees3x) + parseFloat(matrix[n].USDcostMonth2TBextra3x)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth10TBfees3x) + parseFloat(matrix[n].USDcostMonth10TBextra3x)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonthTotalFees3x) + parseFloat(matrix[n].USDcostMonthTotalExtra3x)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth1TBnofees3x) + parseFloat(matrix[n].USDcostMonth1TBextra3x)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth2TBnofees3x) + parseFloat(matrix[n].USDcostMonth2TBextra3x)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonth10TBnofees3x) + parseFloat(matrix[n].USDcostMonth10TBextra3x)).toFixed(2)),
+                                                parseFloat((parseFloat(matrix[n].USDcostMonthTotalNofees3x) + parseFloat(matrix[n].USDcostMonthTotalExtra3x)).toFixed(2))
+                                            ],
+                                            stack: matrix[n].test
+                                        }
+                                        priceMatrix.push(priceEntry)
+
+                                        speedEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat(matrix[n].avgUploadSpeedTo1TB3x),
+                                                parseFloat(matrix[n].avgUploadSpeedTo2TB3x),
+                                                parseFloat(matrix[n].avgUploadSpeedTo10TB3x),
+                                                parseFloat(matrix[n].avgUploadSpeedTotal3x),
+                                            ]
+                                        }
+                                        speedMatrix.push(speedEntry)
+
+                                        var upload = (matrix[n].totalUploaded3x).toFixed(2)
+                                        uploadedEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat(upload),
+                                            ]
+                                        }
+                                        uploadedMatrix.push(uploadedEntry)
+                                        
+                                        contractsEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat(matrix[n].contractsFormationTime),
+                                            ]
+                                        }
+                                        contractsMatrix.push(contractsEntry)
+                                        
+                                        efficiencyEntry = {
+                                            name: matrix[n].test,
+                                            data: [
+                                                parseFloat(matrix[n].efficiency),
+                                            ]
+                                        }
+                                        efficiencyMatrix.push(efficiencyEntry)
+                                    }
+                                }
+                                if (buttonFlag == 0) { // First loading
+                                    priceMatrix.reverse()
+                                    speedMatrix.reverse()
+                                    uploadedMatrix.reverse()
+                                    contractsMatrix.reverse()
+                                    efficiencyMatrix.reverse()
+                                } else {
+                                    
+                                }
+
+                                buttonCharts(priceMatrix, speedMatrix, priceTitle, speedTitle)
+
+                                // Third comparative chart: total uploaded data 
+                                $('#content2b2a').highcharts({
+                                    chart: {
+                                        type: 'column'
+                                    },
+                                    title: {
+                                        text: '<b>Total uploaded data</b>',
+                                        style: {
+                                            color: '#8c8c8c',
+                                            fontFamily: 'Lato',
+                                            fontSize:'17px',
+                                            fontWeight: '900'
+                                        }
+                                    },
+
+                                    exporting: {
+                                        buttons: {
+                                            contextButton: {
+                                                enabled: false
+                                            }    
+                                        }
+                                    },
+
+                                    colors: [
+                                        "#d5824b",
+                                        "#4083a5"
+                                    ],
+                                    
+                                    yAxis: [{
+                                        floor: 0,
+                                        title: {
+                                            text: 'TB'
+                                        },
+                                    }],
+
+                                    xAxis: {
+                                        categories: [
+                                            ''
+                                        ],
+                                        crosshair: true
+                                    },
+                                    legend: {
+                                        enabled: true
+                                    },
+                                    tooltip: {
+                                        shared: true,
+                                        pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} TB</b><br/>'
+                                    },
+                                    plotOptions: {
+                                        column: {
+                                            pointPadding: 0.1,
+                                            borderWidth: 0
+                                        }
+                                    },
+                                    credits:{enabled:false},
+                                    series: uploadedMatrix
+                                });
+                                
+                                // Fourth comparative chart: contract formation time
+                                $('#content2b2b').highcharts({
+                                    chart: {
+                                        type: 'column'
+                                    },
+                                    title: {
+                                        text: '<b>Time to form 50 contracts</b>',
+                                        style: {
+                                            color: '#8c8c8c',
+                                            fontFamily: 'Lato',
+                                            fontSize:'17px',
+                                            fontWeight: '900'
+                                        }
+                                    },
+
+                                    exporting: {
+                                        buttons: {
+                                            contextButton: {
+                                                enabled: false
+                                            }    
+                                        }
+                                    },
+
+                                    colors: [
+                                        "#d5824b",
+                                        "#4083a5"
+                                    ],
+                                    
+                                    yAxis: [{
+                                        floor: 0,
+                                        title: {
+                                            text: 'minutes'
+                                        },
+                                    }],
+
+                                    xAxis: {
+                                        categories: [
+                                            ''
+                                        ],
+                                        crosshair: true
+                                    },
+                                    legend: {
+                                        enabled: true
+                                    },
+                                    tooltip: {
+                                        shared: true,
+                                        pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} minutes</b><br/>'
+                                    },
+                                    plotOptions: {
+                                        column: {
+                                            pointPadding: 0.1,
+                                            borderWidth: 0
+                                        }
+                                    },
+                                    credits:{enabled:false},
+                                    series: contractsMatrix
+                                });
+
+                                // Fifth comparative chart: Efficiency
+                                $('#content2b2c').highcharts({
+                                    chart: {
+                                        type: 'column'
+                                    },
+                                    title: {
+                                        text: '<b>Efficiency of storage (*)</b>',
+                                        style: {
+                                            color: '#8c8c8c',
+                                            fontFamily: 'Lato',
+                                            fontSize:'17px',
+                                            fontWeight: '900'
+                                        }
+                                    },
+
+                                    exporting: {
+                                        buttons: {
+                                            contextButton: {
+                                                enabled: false
+                                            }    
+                                        }
+                                    },
+
+                                    colors: [
+                                        "#d5824b",
+                                        "#4083a5"
+                                    ],
+                                    
+                                    yAxis: [{
+                                        floor: 0,
+                                        title: {
+                                            text: '%'
+                                        },
+                                    }],
+
+                                    xAxis: {
+                                        categories: [
+                                            ''
+                                        ],
+                                        crosshair: true,
+                                    },
+                                    legend: {
+                                        enabled: true
+                                    },
+                                    tooltip: {
+                                        shared: true,
+                                        pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} %</b><br/>'
+                                    },
+                                    plotOptions: {
+                                        column: {
+                                            pointPadding: 0.1,
+                                            borderWidth: 0
+                                        }
+                                    },
+                                    credits:{enabled:false},
+                                    series: efficiencyMatrix
+                                });
+                            }
+                            
+                            // FUNCTION that renders the 1x or 3x charts on user's choice
+                            /////////////////////////////////////////////////////////////
+                            function buttonCharts(priceMatrix, speedMatrix, priceTitle, speedTitle) {
+                                // First comparative chart: costs
+                                $('#content2').highcharts({
+                                    chart: {
+                                        type: 'column'
+                                    },
+                                    title: {
+                                        text: priceTitle,
+                                        style: {
+                                            color: '#8c8c8c',
+                                            fontFamily: 'Lato',
+                                            fontSize:'17px',
+                                            fontWeight: '900'
+                                        }
+                                    },
+
+                                    colors: [
+                                        "#d5824b",
+                                        "#4083a5"
+                                    ],
+                                    
+                                    yAxis: [{
+                                        floor: 0,
+                                        title: {
+                                            text: 'Cost in USD/TB/month'
+                                        },
+                                    }],
+
+                                    xAxis: {
+                                        categories: [
+                                            'First 1TB',
+                                            'First 2TB',
+                                            'First 10TB',
+                                            'Total test',
+                                            'First 1TB (without fees)',
+                                            'First 2TB (without fees)',
+                                            'First 10TB (without fees)',
+                                            'Total test (without fees)'
+                                        ],
+                                        crosshair: true
+                                    },
+                                    legend: {
+                                        enabled: true
+                                    },
+                                    tooltip: {
+                                        shared: true,
+                                        pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} $</b><br/>'
+                                    },
+                                    plotOptions: {
+                                        column: {
+                                            pointPadding: 0.1,
+                                            borderWidth: 0
+                                        }
+                                    },
+                                    credits:{enabled:false},
+                                    series: priceMatrix
+                                }, function(chart) {
+                                        chart.renderer.image('/assets/new_watermark.png', 30, 355, 150, 29)
+                                        .add();
+                                });
+
+                                // Second comparative chart: average speed
+                                $('#content2b1').highcharts({
+                                    chart: {
+                                        type: 'column'
+                                    },
+                                    title: {
+                                        text: speedTitle,
+                                        style: {
+                                            color: '#8c8c8c',
+                                            fontFamily: 'Lato',
+                                            fontSize:'17px',
+                                            fontWeight: '900'
+                                        }
+                                    },
+
+                                    colors: [
+                                        "#d5824b",
+                                        "#4083a5"
+                                    ],
+                                    
+                                    yAxis: [{
+                                        floor: 0,
+                                        title: {
+                                            text: 'Mbps'
+                                        },
+                                    }],
+
+                                    xAxis: {
+                                        categories: [
+                                            'First 1TB',
+                                            'First 2TB',
+                                            'First 10TB',
+                                            'Total test',
+                                        ],
+                                        crosshair: true
+                                    },
+                                    legend: {
+                                        enabled: true
+                                    },
+                                    tooltip: {
+                                        shared: true,
+                                        pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} Mbps</b><br/>'
+                                    },
+                                    plotOptions: {
+                                        column: {
+                                            pointPadding: 0.1,
+                                            borderWidth: 0
+                                        }
+                                    },
+                                    credits:{enabled:false},
+                                    series: speedMatrix
+                                }, function(chart) {
+                                        chart.renderer.image('/assets/new_watermark.png', 30, 355, 150, 29)
+                                        .add();
+                                });
+                            }
+
+                            // Loading individual benchmark reports
+                            function loadBenchmark(n) {
+                                document.getElementById('content4').innerHTML = ""
+                                document.getElementById('content5').innerHTML = ""
+                                document.getElementById('content5b').innerHTML = ""
+                                document.getElementById('content6').innerHTML = ""
+                                document.getElementById("loader").style.display = 'block'
+                                var tsPath = "../benchmarks/ts" + n + ".json"
+                                $.getJSON(tsPath, function(ts) {
+                                    var div = document.createElement('div');
+                                    div.className = 'row';
+                                    var tableCode = '<p style="margin: 100 auto"></p>'
+                                        +'<table id="table-fill" class="table-fill" style="margin: 0 auto; padding: 50 0; max-width: 1150px">' 
+                                            + '<thead>'
+                                                + '<tr style="background:#ffffff;">'
+                                                    + '<th colspan="5" class="text-left" style=" background:#8d8d8d; border-right: 0px solid #D1D1D1">'
+                                                        + '<span style="vertical-align:center; margin: 0 0 0 5"><strong><font size="3" color="white">Test technical sheet</font></strong></span>'
+                                                    + '</th>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Test type</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.type + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Sia version</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.version + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Tester (user)</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.tester + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Date</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + timeConverter(ts.date) + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Testing system</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.system + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Type of files</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.filesType + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Conditions for finishing test</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.terminateCondition + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Sia value at the start of the test</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.siaUSDprice + ' USD/SC</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Uploaded (file bytes)</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.uploadedFile + ' TB</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Uploaded (absolute bytes)</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.uploadedAbsolut + ' TB</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Total files number</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.totalFiles + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Contracts formed</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.contracts + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Spent coins</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.spent.toFixed(2) + ' SC</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Test duration</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.time.toFixed(2) + ' hours</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Storage cost (with 3x redundancy included)</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + (parseFloat(ts.dollarTbMonth3x) + parseFloat(ts.dollarTbMonthUnreported3x)) + ' $/TB/month</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Storage cost (with no redundancy)</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + (parseFloat(ts.dollarTbMonth) + parseFloat(ts.dollarTbMonthUnreported)) + ' $/TB/month</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Upload bandwidth (with 3x redundancy included)</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.uploadFiles + ' Mbps</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Upload bandwidth (with no redundancy)</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.uploadAbsolut + ' Mbps</font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Sia crashes</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.crashes + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Notes</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"> ' + ts.notes + ' </font></span>'
+                                                    + '</td>'
+                                                + '</tr><tr style="height: 35">'
+                                                    + '<td>'
+                                                        + '<span style="vertical-align:center;"><font size="3">Tester blog/post</font></span>'
+                                                    + '</td><td>'
+                                                        + '<span style="vertical-align:center;"><font size="3"><a href="' + ts.link + '" style="display:block; color:#403f3f">' + ts.link + ' </a></font></span>'
+                                                    + '</td>'
+                                                + '</tr>'
+                                        + '</thead> </table>'
+                                    
+                                    document.getElementById('content4').innerHTML = tableCode
+                                    
+                                    testCharts(n)
+                                    filesTable(n)
+
+                                    document.getElementById("loader").style.display = 'none'
+                                    adjustWidth()
+                                })
+
+                            }
+
+                            function filesTable(n) {
+                                var div = document.createElement('div');
+                                div.className = 'row';
+                                var tableCode = '<p style="margin: 100 auto"></p>'
+                                    +'<table id="table-fill" class="table-fill" style="margin: 0 auto; padding: 50 0; max-width: 1150px">' 
+                                        + '<thead>'
+                                            + '<tr style="background:#ffffff;">'
+                                                + '<th colspan="5" class="text-left" style=" background:#8d8d8d; border-right: 0px solid #D1D1D1">'
+                                                    + '<span style="vertical-align:center; margin: 0 0 0 5"><strong><font size="3" color="white">Test raw files</font></strong></span>'
+                                                + '</th>'
+                                            + '</tr><tr style="height: 35">'
+                                                + '<td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">Collected metrics (csv)</font></span>'
+                                                + '</td><td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">'
+                                                        +' <a href="../benchmarks/metrics' + n + '.csv" style="display:block; color:#403f3f">metrics' + n + '.csv</a></font></span>'
+                                                + '</td>'
+                                            + '</tr><tr style="height: 35">'
+                                                + '<td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">Collected metrics (abbreviated JSON)</font></span>'
+                                                + '</td><td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">'
+                                                        +' <a href="../benchmarks/metrics' + n + '.json" style="display:block; color:#403f3f">metrics' + n + '.json</a></font></span>'
+                                                + '</td>'
+                                            + '</tr><tr style="height: 35">'
+                                                + '<td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">Sia logs</font></span>'
+                                                + '</td><td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">'
+                                                        +' <a href="../benchmarks/logs' + n + '.zip" style="display:block; color:#403f3f">logs' + n + '.zip</a></font></span>'
+                                                + '</td>'
+                                            + '</tr><tr style="height: 35">'
+                                                + '<td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">Technical sheet</font></span>'
+                                                + '</td><td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">'
+                                                        +' <a href="../benchmarks/ts' + n + '.json" style="display:block; color:#403f3f">ts' + n + '.json</a></font></span>'
+                                                + '</td>'
+                                            + '</tr><tr style="height: 35">'
+                                                + '<td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">Comparison matrix (all tests)</font></span>'
+                                                + '</td><td>'
+                                                    + '<span style="vertical-align:center;"><font size="3">'
+                                                        +' <a href="../benchmarks/matrix.json" style="display:block; color:#403f3f">matrix.json</a></font></span>'
+                                                + '</td>'
+                                            + '</tr>'
+                                    + '</thead> </table>'
+                                
+                                document.getElementById('content7').innerHTML = tableCode
+                            }
+
+                            function testCharts(n) {
+                                // Renders the two charts with the test metrics
+                                document.getElementById("content5").style.display = 'block'
+                                document.getElementById("content5b").style.display = 'block'
+                                document.getElementById("content6").style.display = 'block'
+
+                                var metricsPath = "../benchmarks/metrics" + n + ".json"
+                                $.getJSON(metricsPath, function(metrics) {
+                                    
+                                    // Processing the array
+                                    var json7 = new Array();
+                                    var json8 = new Array();
+                                    var json9 = new Array();
+                                    var json10 = new Array();
+                                    var json12 = new Array();
+                                    var json13 = new Array();
+                                    var averaging = 5
+                                    for (i = 0; i < metrics.length; i++){
+                                        time = parseInt(metrics[i].time)
+                                        json7.push([time, parseInt(metrics[i].contracts)]);
+                                        json8.push([time, parseFloat(metrics[i].absoluteTB)]);
+                                        json9.push([time, parseFloat(metrics[i].filesTB)]);
+                                        json10.push([time, parseFloat(metrics[i].efficiency)]);
+                                        
+                                        json12.push([time, parseFloat(metrics[i].absoluteBandwidth)]);
+                                        json13.push([time, parseFloat(metrics[i].filesBandwidth)]);
+                                        //if (i >= (averaging)) {
+                                            //var sumAbsolute = 0
+                                            //var sumFiles = 0
+                                            //k = 0
+                                            //for (var k = 0; k < averaging; k++) {
+                                                //var absoluteBandwidth = ((metrics[i-k].absoluteTB - metrics[i-k-1].absoluteTB)* 1000000) / ((parseInt(metrics[i-k].time) - parseInt(metrics[i-k-1].time))/1000) * 8
+                                                //var filesBandwidth = ((metrics[i-k].filesTB - metrics[i-k-1].filesTB) * 1000000) / ((parseInt(metrics[i-k].time) - parseInt(metrics[i-k-1].time))/1000) * 8
+                                                //sumAbsolute = sumAbsolute + absoluteBandwidth
+                                                //sumFiles = sumFiles + filesBandwidth
+                                            //}
+                                            //var avgAbsolute = sumAbsolute / averaging
+                                            //var avgFiles = sumFiles / averaging
+                                            //json12.push([time, avgAbsolute])
+                                            //json13.push([time, avgFiles])
+                                        //}
+                                    }
+
+
+                                    // Data progression chart
+                                    $('#content5').highcharts({
+                                        chart: {
+                                            zoomType: 'x',
+                                            resetZoomButton: {
+                                                position: {
+                                                    align: 'right', // by default
+                                                    verticalAlign: 'top', // by default
+                                                    x: -50,
+                                                    y: 10
+                                                },
+                                                relativeTo: 'chart'
+                                            }
+                                        },
+                                        title: {
+                                            text: '<b>Data uploading</b>',
+                                            style: {
+                                                color: '#8c8c8c',
+                                                fontFamily: 'Lato',
+                                                fontSize:'20px',
+                                                fontWeight: '900'
+                                            }
+                                        },
+
+                                        subtitle: {
+                                            text: document.ontouchstart === undefined ?
+                                                '<i>Click and drag in the plot area to zoom in' : 'Pinch the chart to zoom in</i>'
+                                        },
+
+                                        colors: [
+                                            '#1dbd65',
+                                            '#3d9ac9',
+                                            '#9564b4',
+                                            '#e5a132'
+                                        ],
+                                        
+                                        yAxis: [{
+                                            //maxPadding: 0,
+                                            //minPadding: 100,
+                                            //maxPadding: 2,
+                                            floor: 0,
+                                            //ceiling: 100,
+                                            title: {
+                                                text: 'Uploaded data (TB)'
+                                            },
+                                            opposite: true
+                                        },{ // Secondary yAxis
+                                            floor: 0,
+                                            labels: {
+                                                yAxis: 1,
+                                                style: {
+                                                    color: '#07944e'
+                                                }
+                                            },
+                                            title: {
+                                                text: 'Contracts formed',
+                                                style: {
+                                                    color: '#07944e'
+                                                }
+                                            },
+                                            opposite: false
+                                        },{ // Third yAxis
+                                            floor: 0,
+                                            labels: {
+                                                yAxis: 1,
+                                                style: {
+                                                    color: '#c2703a'
+                                                }
+                                            },
+                                            title: {
+                                                text: 'Efficieny (%)',
+                                                style: {
+                                                    color: '#c2703a'
+                                                }
+                                            },
+                                            opposite: false
+                                        }],
+
+                                        xAxis: {
+                                            type: 'datetime',
+                                            title: {
+                                                text: 'Test timeline'
+                                            }
+                                        },
+                                        legend: {
+                                            enabled: true
+                                        },
+                                        tooltip: {
+                                            shared: true,
+                                            crosshairs: [true]
+                                        },
+                                        plotOptions: {
+                                            area: {
+                                                fillOpacity: 0.05,
+                                                marker: {
+                                                    radius: 0
+                                                },
+                                                lineWidth: 3,
+                                                states: {
+                                                    hover: {
+                                                        lineWidth: 2
+                                                    }
+                                                },
+                                                threshold: null
+                                            }
+                                        },
+                                        credits:{enabled:false},
+                                        series: [{
+                                            type: 'area',
+                                            name: 'Formed contracts',
+                                            data: json7,
+                                            yAxis: 1
+                                        },{
+                                            type: 'area',
+                                            name: 'Absolute data uploaded (TB, after redundancy)',
+                                            data: json8
+                                        },{
+                                            type: 'area',
+                                            name: 'Files uploaded (TB)',
+                                            data: json9
+                                        },{
+                                            type: 'area',
+                                            name: 'Efficiency (%)',
+                                            data: json10,
+                                            yAxis: 2
+                                        }]
+                                    }, function(chart) {
+                                            //chart.xAxis[0].setExtremes((today-15552000000),today);
+                                            chart.showResetZoom();
+                                            chart.renderer.image('/assets/new_watermark.png', 30, 15, 150, 29)
+                                            .add();
+                                    });
+
+                                    // Bandwidth chart
+                                    $('#content5b').highcharts({
+                                        chart: {
+                                            zoomType: 'x',
+                                            resetZoomButton: {
+                                                position: {
+                                                    align: 'right', // by default
+                                                    verticalAlign: 'top', // by default
+                                                    x: -50,
+                                                    y: 10
+                                                },
+                                                relativeTo: 'chart'
+                                            }
+                                        },
+                                        title: {
+                                            text: '<b>Uploading bandwidth</b>',
+                                            style: {
+                                                color: '#8c8c8c',
+                                                fontFamily: 'Lato',
+                                                fontSize:'20px',
+                                                fontWeight: '900'
+                                            }
+                                        },
+
+                                        subtitle: {
+                                            text: document.ontouchstart === undefined ?
+                                                '<i>Click and drag in the plot area to zoom in' : 'Pinch the chart to zoom in</i>'
+                                        },
+
+                                        colors: [
+                                            '#3d9ac9',
+                                            '#9564b4'
+                                        ],
+                                        
+                                        yAxis: [{
+                                            //maxPadding: 0,
+                                            //minPadding: 100,
+                                            //maxPadding: 2,
+                                            floor: 0,
+                                            //ceiling: 100,
+                                            title: {
+                                                text: 'Bandwidth (Mbps)'
+                                            },
+                                            opposite: false
+                                        }],
+
+                                        xAxis: {
+                                            type: 'datetime',
+                                            title: {
+                                                text: 'Test timeline'
+                                            }
+                                        },
+                                        legend: {
+                                            enabled: true
+                                        },
+                                        tooltip: {
+                                            shared: true,
+                                            crosshairs: [true]
+                                        },
+                                        plotOptions: {
+                                            area: {
+                                                fillOpacity: 0.05,
+                                                marker: {
+                                                    radius: 0
+                                                },
+                                                lineWidth: 3,
+                                                states: {
+                                                    hover: {
+                                                        lineWidth: 2
+                                                    }
+                                                },
+                                                threshold: null
+                                            }
+                                        },
+                                        credits:{enabled:false},
+                                        series: [{
+                                            type: 'area',
+                                            name: 'Absolute bandwidth (Mbps, after redundancy)',
+                                            data: json12
+                                        },{
+                                            type: 'area',
+                                            name: 'Files uploaded (Mbps)',
+                                            data: json13
+                                        }]
+                                    }, function(chart) {
+                                            //chart.xAxis[0].setExtremes((today-15552000000),today);
+                                            chart.showResetZoom();
+                                            chart.renderer.image('/assets/new_watermark.png', 30, 15, 150, 29)
+                                            .add();
+                                    });
+
+                                    // Financials chart
+                                    var json1 = new Array();
+                                    var json2 = new Array();
+                                    var json3 = new Array();
+                                    var json4 = new Array();
+                                    var json5 = new Array();
+                                    var json6 = new Array();
+                                    var json11 = new Array();
+                                    for (i = 0; i < metrics.length; i++){
+                                        time = parseInt(metrics[i].time)
+                                        json1.push([time, parseFloat(metrics[i].fees)]);
+                                        json2.push([time, parseFloat(metrics[i].storage)]);
+                                        json3.push([time, parseFloat(metrics[i].upload)]);
+                                        json4.push([time, parseFloat(metrics[i].download)]);
+                                        json5.push([time, parseFloat(metrics[i].renterFunds)]);
+                                        json6.push([time, parseFloat(metrics[i].wallet)]);
+
+                                        var unreported = 5000 - parseFloat(metrics[i].fees) - parseFloat(metrics[i].storage) - parseFloat(metrics[i].upload) - parseFloat(metrics[i].download) -parseFloat(metrics[i].renterFunds) - parseFloat(metrics[i].wallet)
+                                        if (unreported < 0) {unreported = 0}
+                                        json11.push([time, parseFloat(unreported.toFixed(2))]);
+                                    }
+                                    
+                                    $('#content6').highcharts({
+                                        chart: {
+                                            zoomType: 'x',
+                                            resetZoomButton: {
+                                                position: {
+                                                    align: 'right', // by default
+                                                    verticalAlign: 'top', // by default
+                                                    x: -50,
+                                                    y: 10
+                                                },
+                                                relativeTo: 'chart'
+                                            }
+                                        },
+                                        title: {
+                                            text: '<b>Wallet and renter financials</b>',
+                                            style: {
+                                                color: '#8c8c8c',
+                                                fontFamily: 'Lato',
+                                                fontSize:'20px',
+                                                fontWeight: '900'
+                                            }
+                                        },
+
+                                        subtitle: {
+                                            text: document.ontouchstart === undefined ?
+                                                '<i>Click and drag in the plot area to zoom in' : 'Pinch the chart to zoom in</i>'
+                                        },
+
+                                        colors: [
+                                            '#2ccf75',
+                                            '#4083a5',
+                                            '#999999',
+                                            '#c5c255',
+                                            '#d463d0',
+                                            '#e19c51',
+                                            '#e4727c'
+                                        ],
+                                        
+                                        yAxis: {
+                                            //maxPadding: 0,
+                                            //minPadding: 100,
+                                            //maxPadding: 2,
+                                            floor: 0,
+                                            ceiling: 6000,
+                                            title: {
+                                                text: 'Siacoins spending'
+                                            },
+                                        },
+                                        xAxis: {
+                                            type: 'datetime',
+                                            title: {
+                                                text: 'Test timeline'
+                                            }
+                                        },
+                                        legend: {
+                                            enabled: true
+                                        },
+                                        tooltip: {
+                                            shared: true,
+                                            crosshairs: [true],
+                                            pointFormat: '<span style="color:{point.color}">\u25CF</span> {series.name}: <b>{point.y} SC</b><br/>'
+                                        },
+                                        plotOptions: {
+                                            area: {
+                                                stacking: 'normal',
+                                                fillOpacity: 0.3,
+                                                marker: {
+                                                    radius: 0
+                                                },
+                                                lineWidth: 2,
+                                                states: {
+                                                    hover: {
+                                                        lineWidth: 1
+                                                    }
+                                                },
+                                                threshold: null
+                                            }
+                                        },
+                                        credits:{enabled:false},
+                                        series: [{
+                                            type: 'area',
+                                            name: 'Wallet remaining funds',
+                                            data: json6
+                                        },{
+                                            type: 'area',
+                                            name: 'Renter remaining funds',
+                                            data: json5
+                                        },{
+                                            type: 'area',
+                                            name: 'Unreported deductions',
+                                            data: json11
+                                        },{
+                                            type: 'area',
+                                            name: 'Download spending',
+                                            data: json4
+                                        },{
+                                            type: 'area',
+                                            name: 'Upload spending',
+                                            data: json3
+                                        },{
+                                            type: 'area',
+                                            name: 'Storage spending',
+                                            data: json2
+                                        },{
+                                            type: 'area',
+                                            name: 'Contract fees',
+                                            data: json1
+                                        }]
+                                    }, function(chart) {
+                                            //chart.xAxis[0].setExtremes((today-15552000000),today);
+                                            chart.showResetZoom();
+                                            chart.renderer.image('/assets/new_watermark.png', 30, 15, 150, 29)
+                                            .add();
+                                    });
+
+                                    adjustWidth()
+                                })
+                            }
+
+                            function timeConverter(UNIX_timestamp){
+                                var a = new Date(UNIX_timestamp);
+                                var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                var year = a.getFullYear();
+                                var month = months[a.getMonth()];
+                                var date = a.getDate();
+                                var time = date + ' ' + month + ' ' + year;
+                                return time;
+                            }
+
+                        </script>
+
+
+                        <script>
+                            function adjustWidth() {
+                                // Script for adjusting the main page to the screen width. Screens with <1200 will use 1 column
+                                var w = $(window).width();
+
+                                // Adjusting the card sizes to the screen size. More than 850: wider columns
+                                if (w < 1200 && w >= 800) { // Wide 1 column
+                                    $('.footer').css('max-width', 800);
+                                    $('.sub-header').css('width', 750);
+                                    $('.result').css('width', 750);
+                                    $('.table-fill').css('max-width', 750);
+                                    $('.disclaimer').css('max-width', 750);
+                                    $('.timeline').css('max-width', 750);
+                                    $('.chart').css('max-width', 750);
+                                    $('.buttons').css('max-width', 750);
+                                } else if (w < 850) { // 1 column
+                                    $('.sub-header').css('width', 500);
+                                    $('.result').css('width', 550);
+                                    $('.footer').css('max-width', 550);
+                                    $('.table-fill').css('max-width', 550)
+                                    $('.disclaimer').css('max-width', 550);
+                                    $('.timeline').css('max-width', 550);
+                                    $('.chart').css('max-width', 550);
+                                    $('.buttons').css('max-width', 550);
+                                }
+
+                                if (w < 750) {
+                                    $('.sub-header-spacer').css('height', 50);
+                                }
+                            }
+                            adjustWidth()   
+                        </script>  
+
+
+            </div></div></div>
+            
+            <div class="footer-outer">
+                <div class="footer" style="max-width: 1150; height: 550">
+                    <p style="margin: 10 0 20 0">
+                        The shown tests are performed using the <a href="https://github.com/mtlynch/sia_load_tester" style="text-decoration:underline; color:#fff">siad_load_tester package</a> developed by Michael Lynch (mtlynch).
+                        The data is post-processed for trans-test comparison in this page with the script sia-test-parser. The script, togheter with the front-end of this page is available <a href="https://github.com/hakkane84/sia-test-parser" style="text-decoration:underline; color:#fff">on this public repository</a>. 
+                    </p><p style="margin: 10 0 20 0">
+                        The data is shown, for clarity, segregated in "3x redundancy" and "no redundancy". The second represents the costs, upload bandwith and total data considering "absolute bytes".
+                        In other words, represent the data irrespective of if it is a redundant copy or a new file. Thus, it can be orientative for renters that use a file redundancy different from the Sia default of 3x.
+                        "3x redundancy", also referred, as "file bytes" accounts for the parameters considering A) that each file is uploaded 3 times in Sia default configuration and B) additional redundancy provoked by hosts going offline (and so requiring to upload additional copies to new hosts)
+                        and/or other inefficiencies.
+                    </p><p style="margin: 10 0 20 0">
+                        SiaStats is very grateful with the STAC for selecting us for showing the results of these tests (and with the proper Testers), aimed to provide transparent and independent information about the the real-word results of the Sia network and its improvement after each new software iteration.
+                    </p><p style="margin: 10 0 20 0">
+                        (*) Efficiency represents the relative costs of Sia storage considering the redundancy used. 100% efficiency would depict that the data is uploaded only once. Due to the 3x redundancy of Sia by default, the expected normal efficiency of Sia
+                        should be 33.3%. Efficiencies bellow this number represent additional copies being uploaded to replace bad hosts or other misfunctionings requiring to upload more data than expected.
+                    </p>
+                </div>
+            </div>
+    </body>
+    
+ </html>

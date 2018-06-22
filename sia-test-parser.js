@@ -2,26 +2,27 @@ var fs = require('fs');
 
 
 // SET FILE NAMES AND VARIABLES HERE
-var file = "fornax.csv" // Input file
-var fileJSON = "fornax.json" // Output file
+var file = "metrics1.csv" // Input file
+var fileJSON = "metrics1.json" // Output file
 var fileMatrix = "matrix.json" // Path of the comparison matrix file
-var reportNumber = 2 // Number of the test, in the historic series of test. Starting with 1 for mtlynch's report, 2 for Fornax's...
-var testName = "1.3.3 - Fornax" // Example: "1.3.1 - mtlynch"
+var reportNumber = 1 // Number of the test, in the historic series of test. Starting with 1 for mtlynch's report, 2 for Fornax's...
+var testName = "1.3.1 - mtlynch" // Example: "1.3.1 - mtlynch"
 var testType = "Load test" // Example: "Load test"
-var testConditions = "10 GB files" // Size of the uploaded files and other differential key aspects of the test, as a short summary. Examples: "40 MB files" (mtlynch's), "10 GB files" (Fornax's)
-var siaValue = 0.01315 // Siacoin value at the time of the test. Check CoinMarketCap
+var testConditions = "40 MiB files" // Size of the uploaded files and other differential key aspects of the test, as a short summary. Examples: "40 MB files" (mtlynch's), "10 GB files" (Fornax's)
+var siaValue = 0.01370 // Siacoin value at the time of the test. Check CoinMarketCap
 var initialBalance = 5000 // Initial balance on the wallet
 // Other manual variables for the technical sheet
-var testVersion = "1.3.3"
-var testTester = "Fornax"
-var testSystem = "-"
+var testVersion = "1.3.1"
+var testTester = "mtlynch"
+var testSystem = "Win10 x64, Intel i7-5820K, 32GB RAM, 512GB SSD, 900Mbps down/ 880Mbps up (Verizon FiOS)"
 var testFilesType = "Synthetic 10GB files"
-var testTerminateCondition = "10 GB (file bytes) uploaded"
-var testCrashes = "-"
-var testNotes = "-"
-var testLink = "-"
+var testTerminateCondition = "Progress stops (less than 3Mbps of upload speed) or 5 crashes or lasts 14 days"
+var testCrashes = "0"
+var testNotes = "The metrics collector crashed at hour 187, being down for 7 hours. The test was manually terminated after 14 days"
+var testLink = "https://blog.spaceduck.io/load-test-3/"
 // IF THE CSV HAS AN INTERVAL < 1 MINUTE, adjust the number so it checks every x entries. If interval = 1 minute, let "skip" in 2, if 5 seconds, "skip" = 20. Avoids the function to chocke with the csv file processing
-var skip = 5
+var skip = 20
+
 
 
 console.log("---------------------------------------------")
@@ -62,6 +63,7 @@ stream1.on('end', function() {
         "totalUploaded": 0,
         "totalUploaded3x": 0,
         "totalFiles": 0,
+        "efficiency": 0,
         "avgUploadSpeedTo1TB": 0,
         "SCcostMonth1TBfees": 0,
         "USDcostMonth1TBfees": 0,
@@ -127,7 +129,7 @@ stream1.on('end', function() {
     var prevContracts = 0
     var prevTime = new Date(array[0][0]).getTime()
     var zeroTime = new Date(array[0][0]).getTime()
-    entry = createEntry(array[0])
+    entry = createEntry(array[0], newArray)
     newArray.push(entry)
 
     // 4- Loop invoking. Starts in element 1
@@ -174,7 +176,7 @@ stream1.on('end', function() {
 function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry) {
     var time = new Date(array[n][0]).getTime()
     if (time >= (prevTime + 900000)) { // Only takes one entry every 15 minutes (900000 milliseconds)
-        entry = createEntry(array[n])
+        entry = createEntry(array[n], newArray)
         newArray.push(entry)
         prevTime = time
     }
@@ -391,6 +393,10 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
         matrixEntry.SCcostMonthTotalNofees3x = TBmonthMinusFees3x
         matrixEntry.USDcostMonthTotalNofees3x = (TBmonthMinusFees3x * siaValue).toFixed(2)
         matrixEntry.totalUploaded3x = totalUploaded3x
+        // Efficiency
+        var absoluteTB = (array[n][4] / 1000000000000).toFixed(2) // In gigabytes
+        var filesTB = (array[n][5] / 1000000000000).toFixed(2) // In gigabytes
+        matrixEntry.efficiency = ((filesTB / absoluteTB)*100).toFixed(2)
 
         // Technical sheet file
         // Print the total amount uploaded to Finish the report
@@ -431,11 +437,13 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
 }
 
 
-function createEntry(e) {
+function createEntry(e, array) {
     // Creates and adds an entry for the JSON file
     var time = new Date(e[0]).getTime()
     var absoluteTB = (e[4] / 1000000000000).toFixed(2) // In gigabytes
     var filesTB = (e[5] / 1000000000000).toFixed(2) // In gigabytes
+    var absoluteMB = (e[4] / 1000000).toFixed(2) // In gigabytes
+    var filesMB = (e[5] / 1000000).toFixed(2) // In gigabytes
     if (absoluteTB == 0) { // Avoids a division by 0
         var efficiency = 0
     } else {
@@ -448,7 +456,20 @@ function createEntry(e) {
     var renterFunds = (e[12] / 1000000000000000000000000).toFixed(2)
     var wallet = (e[13] / 1000000000000000000000000).toFixed(2)
 
-    var entry = {"time": time, "contracts": parseInt(e[1]), "absoluteTB": absoluteTB, "filesTB": filesTB, "efficiency": efficiency, "fees": fees,
+    // Speeds
+    if (array.length > 0) { // Only if there are already entries on the timeline array
+        var deltaFilesMB = filesMB - array[array.length-1].filesMB
+        var deltaAbsoluteMB = absoluteMB - array[array.length-1].absoluteMB
+        var filesBandwidth = ((deltaFilesMB / ((time - array[array.length-1].time) / 1000)) * 8).toFixed(2) // in Mbps
+        var absoluteBandwidth = ((deltaAbsoluteMB / ((time - array[array.length-1].time) / 1000)) * 8).toFixed(2) // in Mbps
+    } else { // first entry
+        var filesBandwidth = 0
+        var absoluteBandwidth = 0
+    }
+
+
+    var entry = {"time": time, "contracts": parseInt(e[1]), "absoluteTB": absoluteTB, "filesTB": filesTB, "absoluteMB": absoluteMB, "filesMB": filesMB, 
+        "absoluteBandwidth": absoluteBandwidth, "filesBandwidth": filesBandwidth, "efficiency": efficiency, "fees": fees,
         "storage": storage, "upload": upload, "download": download, "renterFunds": renterFunds, "wallet": wallet}
 
     return entry
