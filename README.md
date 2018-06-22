@@ -12,3 +12,5 @@ To use it:
 * Run `node sia-test-parser.js`. Files will be generated or updated
 
 The code uses a csv parsing function from Jos de Jong, 2010 (http://speqmath.com/tutorials/csv2array/)
+
+For using the frontend, place the generated `ts#.json`, `metrics#.json` and `matrix.json` files on the `/web/benchmarks` folder and place the `/web` folder on your favorite HTTP web server
