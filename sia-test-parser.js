@@ -2,24 +2,28 @@ var fs = require('fs');
 
 
 // SET FILE NAMES AND VARIABLES HERE
-var file = "metrics1.csv" // Input file
-var fileJSON = "metrics1.json" // Output file
+var file = "metrics3.csv" // Input file
+var fileJSON = "metrics3.json" // Output file
 var fileMatrix = "matrix.json" // Path of the comparison matrix file
-var reportNumber = 1 // Number of the test, in the historic series of test. Starting with 1 for mtlynch's report, 2 for Fornax's...
-var testName = "1.3.1 - mtlynch" // Example: "1.3.1 - mtlynch"
+var reportNumber = 3 // Number of the test, in the historic series of test. Starting with 1 for mtlynch's report, 2 for Fornax's...
+
+// New file format introduced by Fornax ib the test on 1.3.4. Columns order has changed, and this boolean accounts for this to preserve the compatibility
+var newCsvFormat = true
+
+var testName = "1.3.4 - STAC/Fornax" // Example: "1.3.1 - mtlynch"
 var testType = "Load test" // Example: "Load test"
-var testConditions = "40 MiB files" // Size of the uploaded files and other differential key aspects of the test, as a short summary. Examples: "40 MB files" (mtlynch's), "10 GB files" (Fornax's)
-var siaValue = 0.01370 // Siacoin value at the time of the test. Check CoinMarketCap
-var initialBalance = 5000 // Initial balance on the wallet
+var testConditions = "10 GB files" // Size of the uploaded files and other differential key aspects of the test, as a short summary. Examples: "40 MB files" (mtlynch's), "10 GB files" (Fornax's)
+var siaValue = 0.00733 // Siacoin value at the time of the test. Check CoinMarketCap
+var initialBalance = 10000 // Initial balance on the wallet
 // Other manual variables for the technical sheet
-var testVersion = "1.3.1"
-var testTester = "mtlynch"
-var testSystem = "Win10 x64, Intel i7-5820K, 32GB RAM, 512GB SSD, 900Mbps down/ 880Mbps up (Verizon FiOS)"
+var testVersion = "1.3.4"
+var testTester = "STAC / Fornax"
+var testSystem = "Scaleway C2M: 8 x86 cores, 16 GB RAM, 190 GB SSD, 500Mbps bandwidth"
 var testFilesType = "Synthetic 10GB files"
-var testTerminateCondition = "Progress stops (less than 3Mbps of upload speed) or 5 crashes or lasts 14 days"
-var testCrashes = "0"
-var testNotes = "The metrics collector crashed at hour 187, being down for 7 hours. The test was manually terminated after 14 days"
-var testLink = "https://blog.spaceduck.io/load-test-3/"
+var testTerminateCondition = ""
+var testCrashes = ""
+var testNotes = ""
+var testLink = ""
 // IF THE CSV HAS AN INTERVAL < 1 MINUTE, adjust the number so it checks every x entries. If interval = 1 minute, let "skip" in 2, if 5 seconds, "skip" = 20. Avoids the function to chocke with the csv file processing
 var skip = 20
 
@@ -50,6 +54,11 @@ stream1.on('end', function() {
         } else {
             n = array.length // exits the loop
         }
+    }
+
+    // 1b- Adjusting the format of the array in case of new CSV format
+    if (newCsvFormat == true) {
+        array = csvFormatAdjust(array)
     }
 
     // 2- Comaprison matrix creation
@@ -184,8 +193,10 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
     if (parseInt(array[n][1]) >= 50 && prevContracts < 50) {
         // If we reached 50 contracts, print the time needed
         var timeTo50 = (time - zeroTime) / 60000 // In minutes
-        console.log("Time for going from 0 to 50 contracts: " + timeTo50 + " minutes")
-        matrixEntry.contractsFormationTime = timeTo50
+        if (matrixEntry.contractsFormationTime == 0) { // Only the first time the contract 50 is formed (not when they are dropped)
+            matrixEntry.contractsFormationTime = timeTo50
+            console.log("Time for going from 0 to 50 contracts: " + timeTo50 + " minutes")
+        }
     }
 
     if (array[n][4] >= 1000000000000 && prevStorage < 1000000000000) {
@@ -570,4 +581,34 @@ function csv2array(data, delimeter) {
     }  
     
     return array;
+}
+
+
+// Adjusts the CSV to the old format for the new tests prepared by Fornax
+function csvFormatAdjust(array) {
+    var newArray = []
+    for (var n = 0; n < array.length; n++) {
+        newEntry = [
+            array[n][0],
+            array[n][6],
+            array[n][2],
+            array[n][4],
+            array[n][5],
+            array[n][3],
+            array[n][5],
+            array[n][9],
+            array[n][19], // Renter
+            array[n][23], // Renter
+            array[n][24], // Renter
+            array[n][22], // Renter
+            array[n][14],
+            array[n][15],
+            array[n][16],
+            array[n][17]
+        ]
+
+        newArray.push(newEntry)
+    }
+
+    return newArray
 }
