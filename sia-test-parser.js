@@ -626,21 +626,19 @@ function csvFormatAdjust2(array) {
     for (var n = 0; n < array.length; n++) {
         newEntry = [
             array[n][0],
-            parseInt(array[n][6]) + parseInt(array[n][7]), // Contract count
+            parseInt(array[n][6]) + parseInt(array[n][7]) + parseInt(array[n][8]), // Contract count
             array[n][2],
             array[n][4],
             array[n][5],
             array[n][3],
             array[n][5],
             array[n][9],
-            array[n][19], // Renter
-            array[n][22], // Renter
-            array[n][23], // Renter
-            array[n][21], // Renter
-            array[n][14],
-            array[n][15],
-            array[n][16],
-            array[n][17]
+            array[n][20], // Renter - fees
+            array[n][23], // Renter - storage
+            array[n][24], // Renter - upload
+            array[n][22], // Renter - download
+            array[n][15], // Wallet remaning funds
+            array[n][16], // Wallet balance
         ]
 
         newArray.push(newEntry)
