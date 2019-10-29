@@ -55,7 +55,6 @@ if (csvFormat == 1) {
     // Array comes without columns already
 }
 
-//console.log(array[0])
 
 // 1 - Slicing useless timepoints without contract formation
 for (var n = 0; n < array.length; n++) {
@@ -136,6 +135,8 @@ var matrixEntry = { // Will save the values for the comparison matrix
     "USDcostMonthTotalNofees3x": 0,
     "SCcostMonthTotalExtra3x": 0,
     "USDcostMonthTotalExtra3x": 0,
+    "maxFilesBandwidth": 0,
+    "maxAbsoluteBandwidth": 0
 }
 
 // 3- First entry
@@ -415,6 +416,21 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
         var filesTB = (array[n][5] / 1000000000000).toFixed(2) // In gigabytes
         matrixEntry.efficiency = ((filesTB / absoluteTB)*100).toFixed(2)
 
+        // Max speed
+        var maxFilesBandwidth = 0
+        var maxAbsoluteBandwidth = 0
+        for (var i = 0; i < newArray.length; i++) {
+            if (newArray[newArray.length-1].filesBandwidth > maxFilesBandwidth) {
+                maxFilesBandwidth = newArray[newArray.length-1].filesBandwidth
+            }
+            if (newArray[newArray.length-1].absoluteBandwidth > maxAbsoluteBandwidth) {
+                maxAbsoluteBandwidth = newArray[newArray.length-1].absoluteBandwidth
+            }
+        }
+        matrixEntry.maxFilesBandwidth = maxFilesBandwidth
+        matrixEntry.maxAbsoluteBandwidth = maxAbsoluteBandwidth
+        console.log("Max absolute bandwidth: " + maxAbsoluteBandwidth)
+
         // Technical sheet file
         // Print the total amount uploaded to Finish the report
         var totalUploaded = (array[n][4] / 1000000000000).toFixed(2)
@@ -440,6 +456,8 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
             "dollarTbMonthUnreported3x": (TBmonthExtra3x * siaValue).toFixed(2),
             "uploadFiles": speedToFinal3x,
             "uploadAbsolut":speedToFinal,
+            "maxFilesBandwidth": maxFilesBandwidth,
+            "maxAbsoluteBandwidth": maxAbsoluteBandwidth,
             "disabledContracts": parseInt(array[n][15]),
             "dataInDisabledContractsMB": parseInt(array[n][15] / 1000000),
             "crashes": testCrashes,
