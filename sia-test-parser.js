@@ -1,191 +1,191 @@
 var fs = require('fs');
 
-
 // SET FILE NAMES AND VARIABLES HERE
-var file = "metrics4.csv" // Input file
-var fileJSON = "metrics4.json" // Output file
-var fileMatrix = "matrix.json" // Path of the comparison matrix file
-var reportNumber = 4 // Number of the test, in the historic series of test. Starting with 1 for mtlynch's report, 2 for Fornax's...
+var outputPath = "" // Path where the output files will be located
+var reportNumber = 5 // Number of the test, in the historic series of test. Starting with 1 for mtlynch's report, 2 for Fornax's...
+var file = "metrics5.csv" // Input file
 
-// New file format introduced by Fornax ib the test on 1.3.4. Columns order has changed, and this boolean accounts for this to preserve the compatibility
-var newCsvFormat = true
-// Newesst file format, introduced by Fornax on 1.4.0
-var csvFormat2 = true
+// Change this variable depending on the csv input format, as the data collector has been changed sevaeral times:
+var csvFormat = 3
+// 0 - Pre 1.3.4
+// 1 - Introduced by Fornax ib the test on 1.3.4. Columns order has changed, and this boolean accounts for this to preserve the compatibility
+// 2 - Introduced by Fornax on 1.4.0
+// 3 - Automated column identification, to use starting on 1.4.1 test and onwards
 
-var testName = "1.4.0 - STAC/Fornax" // Example: "1.3.1 - mtlynch"
-var testType = "Load test - pre-test" // Example: "Load test"
+
+var testName = "1.4.1 - STAC/Fornax" // Example: "1.3.1 - mtlynch"
+var testType = "Load test" // Example: "Load test"
 var testConditions = "10 GB files" // Size of the uploaded files and other differential key aspects of the test, as a short summary. Examples: "40 MB files" (mtlynch's), "10 GB files" (Fornax's)
-var siaValue = 0.00262 // Siacoin value at the time of the test. Check CoinMarketCap
+var siaValue = 0.00197 // Siacoin value at the time of the test. Check CoinMarketCap
 var initialBalance = 10000 // Initial balance on the wallet
 // Other manual variables for the technical sheet
 var testVersion = "1.4.0"
 var testTester = "STAC / Fornax"
-var testSystem = "Scaleway C2M: 8 x86 cores, 16 GB RAM, 190 GB SSD, 500Mbps bandwidth"
+var testSystem = "Scaleway C2L: 8 x86 cores, 32 GB RAM, 250 GB SSD, 600Mbps bandwidth"
 var testFilesType = "Synthetic 10GB files"
-var testTerminateCondition = "Upload dropped to <3Mbps for 60 minutes"
+var testTerminateCondition = "Upload dropped to <1Mbps for 60 minutes or 10TB uploaded"
 var testCrashes = "0"
-var testNotes = ""
+var testNotes = "Test terminated after 1 day due to sustained upload speed bellow 1Mbps"
 var testLink = ""
 // IF THE CSV HAS AN INTERVAL < 1 MINUTE, adjust the number so it checks every x entries. If interval = 1 minute, let "skip" in 2, if 5 seconds, "skip" = 20. Avoids the function to chocke with the csv file processing
 var skip = 2
 
-
+var tsFile = outputPath + "ts" + reportNumber + ".json" // Technical sheet file
+var fileJSON = outputPath + "metrics" + reportNumber + ".json" // Output file
+var fileMatrix = outputPath + "matrix.json" // Path of the comparison matrix file
 
 console.log("---------------------------------------------")
 console.log("               SIA-TEST-PARSER")
 console.log("          Analyzing: " + file)
 console.log("---------------------------------------------")
-var tsFile = "ts" + reportNumber + ".json" // Technical sheet file
-var data1 = '';
-var chunk1;
-var stream1 = fs.createReadStream(file)
-stream1.on('readable', function() { //Function just to read the whole file before proceeding
-    while ((chunk1=stream1.read()) != null) {
-        data1 += chunk1;}
-});
-stream1.on('end', function() {
-    var csvContent = data1
-    var array = csv2array(csvContent, ",")
+
+
+var csvContent = fs.readFileSync(file).toString()
+var array = csv2array(csvContent, ",")
+
+// 0 - Adjusting the format of the array in case of new CSV format
+if (csvFormat == 1) {
+    array = csvFormatAdjust(array)
     array.splice(0,1) // Removes column titles
+} else if (csvFormat == 2) {
+    array = csvFormatAdjust2(array)
+    array.splice(0,1) // Removes column titles
+} else if (csvFormat == 3) {
+    array = csvFormatAdjustAuto(array)
+    // Array comes without columns already
+}
 
-    // 1- Slicing useless timepoints without contract formation
-    for (var n = 0; n < array.length; n++) {
-        if (array[n][1] == 0 && array[n+1][1] == 0) {
-            array.splice(n,1)
-            n--
-        } else {
-            n = array.length // exits the loop
-        }
-    }
+//console.log(array[0])
 
-    // 1b- Adjusting the format of the array in case of new CSV format
-    if (csvFormat2 == true) {
-        array = csvFormatAdjust2(array)
+// 1 - Slicing useless timepoints without contract formation
+for (var n = 0; n < array.length; n++) {
+    if (array[n][1] == 0 && array[n+1][1] == 0) {
+        array.splice(n,1)
+        n--
     } else {
-        if (newCsvFormat == true) {
-            array = csvFormatAdjust(array)
-        }
+        n = array.length // exits the loop
+    }
+}
+
+
+// 2- Comaprison matrix creation
+// "extra" Represent balances missing from the wallet and the renter, but that have vanished from the wallet nevertheless
+var matrixEntry = { // Will save the values for the comparison matrix
+    "test": testName,
+    "type": testType,
+    "date": new Date(array[0][0]).getTime(),
+    "conditions": testConditions,
+    "contractsFormationTime": 0,
+    "totalUploaded": 0,
+    "totalUploaded3x": 0,
+    "totalFiles": 0,
+    "efficiency": 0,
+    "avgUploadSpeedTo1TB": 0,
+    "SCcostMonth1TBfees": 0,
+    "USDcostMonth1TBfees": 0,
+    "SCcostMonth1TBnofees": 0,
+    "USDcostMonth1TBnofees": 0,
+    "SCcostMonth1TBextra": 0,
+    "USDcostMonth1TBextra": 0,
+    "avgUploadSpeedTo2TB": 0,
+    "SCcostMonth2TBfees": 0,
+    "USDcostMonth2TBfees": 0,
+    "SCcostMonth2TBnofees": 0,
+    "USDcostMonth2TBnofees": 0,
+    "SCcostMonth2TBextra": 0,
+    "USDcostMonth2TBextra": 0,
+    "avgUploadSpeedTo10TB": 0,
+    "SCcostMonth10TBfees": 0,
+    "USDcostMonth10TBfees": 0,
+    "SCcostMonth10TBnofees": 0,
+    "USDcostMonth10TBnofees": 0,
+    "SCcostMonth10TBextra": 0,
+    "USDcostMonth10TBextra": 0,
+    "avgUploadSpeedTotal": 0,
+    "SCcostMonthTotalFees": 0,
+    "USDcostMonthTotalFees": 0,
+    "SCcostMonthTotalNofees": 0,
+    "USDcostMonthTotalNofees": 0,
+    "SCcostMonthTotalExtra": 0,
+    "USDcostMonthTotalExtra": 0,
+    "avgUploadSpeedTo1TB3x": 0,
+    "SCcostMonth1TBfees3x": 0,
+    "USDcostMonth1TBfees3x": 0,
+    "SCcostMonth1TBnofees3x": 0,
+    "USDcostMonth1TBnofees3x": 0,
+    "SCcostMonth1TBextra3x": 0,
+    "USDcostMonth1TBextra3x": 0,
+    "avgUploadSpeedTo2TB3x": 0,
+    "SCcostMonth2TBfees3x": 0,
+    "USDcostMonth2TBfees3x": 0,
+    "SCcostMonth2TBnofees3x": 0,
+    "USDcostMonth2TBnofees3x": 0,
+    "SCcostMonth2TBextra3x": 0,
+    "USDcostMonth2TBextra3x": 0,
+    "avgUploadSpeedTo10TB3x": 0,
+    "SCcostMonth10TBfees3x": 0,
+    "USDcostMonth10TBfees3x": 0,
+    "SCcostMonth10TBnofees3x": 0,
+    "USDcostMonth10TBnofees3x": 0,
+    "SCcostMonth10TBextra3x": 0,
+    "USDcostMonth10TBextra3x": 0,
+    "avgUploadSpeedTotal3x": 0,
+    "SCcostMonthTotalFees3x": 0,
+    "USDcostMonthTotalFees3x": 0,
+    "SCcostMonthTotalNofees3x": 0,
+    "USDcostMonthTotalNofees3x": 0,
+    "SCcostMonthTotalExtra3x": 0,
+    "USDcostMonthTotalExtra3x": 0,
+}
+
+// 3- First entry
+var newArray = []
+var prevStorage = 0
+var prevStorageFileBytes = 0
+var prevContracts = 0
+var prevTime = new Date(array[0][0]).getTime()
+var zeroTime = new Date(array[0][0]).getTime()
+entry = createEntry(array[0], newArray)
+newArray.push(entry)
+
+// 4- Loop invoking. Starts in element 1
+loop(array, 1, newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry)
+
+// 5 - Saving the files
+console.log("Creating the abbreviated report '" + fileJSON + "' with " + newArray.length + " entries")
+console.log("")
+var stream2 = fs.createWriteStream(fileJSON)
+var string2 = JSON.stringify(newArray)
+stream2.write(string2)
+
+// 6- Matrix saving
+//console.log(matrixEntry)
+console.log("Adding the information to the comparison matrix file")
+console.log("")
+
+// Opening the matrix file
+var stream5 = fs.createReadStream(fileMatrix)
+var data5 = '';
+var chunk5;
+stream5.on('readable', function() { //Function just to read the whole file before proceeding
+    while ((chunk5=stream5.read()) != null) {
+        data5 += chunk5;}
+});
+stream5.on('end', function() {
+    if (data5 != "") {
+        var matrix = JSON.parse(data5)
+    } else {
+        var matrix = [] // Ensurig this is an array
     }
 
-    // 2- Comaprison matrix creation
-    // "extra" Represent balances missing from the wallet and the renter, but that have vanished from the wallet nevertheless
-    var matrixEntry = { // Will save the values for the comparison matrix
-        "test": testName,
-        "type": testType,
-        "date": new Date(array[0][0]).getTime(),
-        "conditions": testConditions,
-        "contractsFormationTime": 0,
-        "totalUploaded": 0,
-        "totalUploaded3x": 0,
-        "totalFiles": 0,
-        "efficiency": 0,
-        "avgUploadSpeedTo1TB": 0,
-        "SCcostMonth1TBfees": 0,
-        "USDcostMonth1TBfees": 0,
-        "SCcostMonth1TBnofees": 0,
-        "USDcostMonth1TBnofees": 0,
-        "SCcostMonth1TBextra": 0,
-        "USDcostMonth1TBextra": 0,
-        "avgUploadSpeedTo2TB": 0,
-        "SCcostMonth2TBfees": 0,
-        "USDcostMonth2TBfees": 0,
-        "SCcostMonth2TBnofees": 0,
-        "USDcostMonth2TBnofees": 0,
-        "SCcostMonth2TBextra": 0,
-        "USDcostMonth2TBextra": 0,
-        "avgUploadSpeedTo10TB": 0,
-        "SCcostMonth10TBfees": 0,
-        "USDcostMonth10TBfees": 0,
-        "SCcostMonth10TBnofees": 0,
-        "USDcostMonth10TBnofees": 0,
-        "SCcostMonth10TBextra": 0,
-        "USDcostMonth10TBextra": 0,
-        "avgUploadSpeedTotal": 0,
-        "SCcostMonthTotalFees": 0,
-        "USDcostMonthTotalFees": 0,
-        "SCcostMonthTotalNofees": 0,
-        "USDcostMonthTotalNofees": 0,
-        "SCcostMonthTotalExtra": 0,
-        "USDcostMonthTotalExtra": 0,
-        "avgUploadSpeedTo1TB3x": 0,
-        "SCcostMonth1TBfees3x": 0,
-        "USDcostMonth1TBfees3x": 0,
-        "SCcostMonth1TBnofees3x": 0,
-        "USDcostMonth1TBnofees3x": 0,
-        "SCcostMonth1TBextra3x": 0,
-        "USDcostMonth1TBextra3x": 0,
-        "avgUploadSpeedTo2TB3x": 0,
-        "SCcostMonth2TBfees3x": 0,
-        "USDcostMonth2TBfees3x": 0,
-        "SCcostMonth2TBnofees3x": 0,
-        "USDcostMonth2TBnofees3x": 0,
-        "SCcostMonth2TBextra3x": 0,
-        "USDcostMonth2TBextra3x": 0,
-        "avgUploadSpeedTo10TB3x": 0,
-        "SCcostMonth10TBfees3x": 0,
-        "USDcostMonth10TBfees3x": 0,
-        "SCcostMonth10TBnofees3x": 0,
-        "USDcostMonth10TBnofees3x": 0,
-        "SCcostMonth10TBextra3x": 0,
-        "USDcostMonth10TBextra3x": 0,
-        "avgUploadSpeedTotal3x": 0,
-        "SCcostMonthTotalFees3x": 0,
-        "USDcostMonthTotalFees3x": 0,
-        "SCcostMonthTotalNofees3x": 0,
-        "USDcostMonthTotalNofees3x": 0,
-        "SCcostMonthTotalExtra3x": 0,
-        "USDcostMonthTotalExtra3x": 0,
-    }
+    // Replacing the matrix element with the new matrix entry on the "reportNumber" position
+    matrix[reportNumber - 1] = matrixEntry
 
-    // 3- First entry
-    var newArray = []
-    var prevStorage = 0
-    var prevStorageFileBytes = 0
-    var prevContracts = 0
-    var prevTime = new Date(array[0][0]).getTime()
-    var zeroTime = new Date(array[0][0]).getTime()
-    entry = createEntry(array[0], newArray)
-    newArray.push(entry)
-
-    // 4- Loop invoking. Starts in element 1
-    loop(array, 1, newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry)
- 
-    // 5 - Saving the files
-    console.log("Creating the abbreviated report '" + fileJSON + "' with " + newArray.length + " entries")
-    console.log("")
-    var stream2 = fs.createWriteStream(fileJSON)
-    var string2 = JSON.stringify(newArray)
-    stream2.write(string2)
-
-    // 6- Matrix saving
-    //console.log(matrixEntry)
-    console.log("Adding the information to the comparison matrix file")
-    console.log("")
-
-    // Opening the matrix file
-    var stream5 = fs.createReadStream(fileMatrix)
-    var data5 = '';
-    var chunk5;
-    stream5.on('readable', function() { //Function just to read the whole file before proceeding
-        while ((chunk5=stream5.read()) != null) {
-            data5 += chunk5;}
-    });
-    stream5.on('end', function() {
-        if (data5 != "") {
-            var matrix = JSON.parse(data5)
-        } else {
-            var matrix = [] // Ensurig this is an array
-        }
-
-        // Replacing the matrix element with the new matrix entry on the "reportNumber" position
-        matrix[reportNumber - 1] = matrixEntry
-
-        var stream4 = fs.createWriteStream(fileMatrix)
-        var string4 = JSON.stringify(matrix)
-        stream4.write(string4)
-    })
-
+    var stream4 = fs.createWriteStream(fileMatrix)
+    var string4 = JSON.stringify(matrix)
+    stream4.write(string4)
 })
+
 
 
 function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry) {
@@ -440,6 +440,8 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
             "dollarTbMonthUnreported3x": (TBmonthExtra3x * siaValue).toFixed(2),
             "uploadFiles": speedToFinal3x,
             "uploadAbsolut":speedToFinal,
+            "disabledContracts": parseInt(array[n][15]),
+            "dataInDisabledContractsMB": parseInt(array[n][15] / 1000000),
             "crashes": testCrashes,
             "notes": testNotes,
             "link": testLink
@@ -485,9 +487,31 @@ function createEntry(e, array) {
     }
 
 
-    var entry = {"time": time, "contracts": parseInt(e[1]), "absoluteTB": absoluteTB, "filesTB": filesTB, "absoluteMB": absoluteMB, "filesMB": filesMB, 
-        "absoluteBandwidth": absoluteBandwidth, "filesBandwidth": filesBandwidth, "efficiency": efficiency, "fees": fees,
-        "storage": storage, "upload": upload, "download": download, "renterFunds": renterFunds, "wallet": wallet}
+    var entry = {
+        "time": time, 
+        "contracts": parseInt(e[1]), 
+        "absoluteTB": absoluteTB, 
+        "filesTB": filesTB, 
+        "absoluteMB": absoluteMB, 
+        "filesMB": filesMB, 
+        "absoluteBandwidth": absoluteBandwidth, 
+        "filesBandwidth": filesBandwidth, 
+        "efficiency": efficiency, 
+        "fees": fees,
+        "storage": storage, 
+        "upload": upload, 
+        "download": download, 
+        "renterFunds": renterFunds, 
+        "wallet": wallet,
+        "disabledContracts": null,
+        "dataInDisabledContractsMB": null
+    }
+
+    // Only in the new CSV format from Sia version 1.4.1 and onwards
+    if (csvFormat >= 3) {
+        entry.disabledContracts = parseInt(e[14])
+        entry.dataInDisabledContractsMB = parseInt(e[15] / 1000000)
+    }
 
     return entry
 }
@@ -641,6 +665,68 @@ function csvFormatAdjust2(array) {
             array[n][16], // Wallet balance
         ]
 
+        newArray.push(newEntry)
+    }
+
+    return newArray
+}
+
+// Adjusts the CSV to the old format for the new tests prepared by Fornax
+function csvFormatAdjustAuto(array) {
+    // Automatically adjust the format reading the column titles
+    var newArray = []
+
+    // 0 - Timestamp
+    // 1 - Contract count: Active + Renewed + Disabled
+    // 2 - File count
+    // 3 - File uploads in progress (not used, but kept for compatibility)
+    // 4 - File uploaded bytes
+    // 5 - File total bytes
+    // 6 - File uploaded bytes (not used, but kept for compatibility)
+    // 7 - Contract total size (not used, but kept for compatibility)
+    // 8 - Renter contract fees
+    // 9 - Renter storage spending
+    // 10 - Renter upload spending
+    // 11 - Renting download spending
+    // 12 - Contract remaining funds
+    // 13 - Wallet Siacoin balance
+    // 14 - Disabled contracts (new)
+    // 15 - Data stored on disabled contracts (new)
+
+    // Identifying the position of these columns
+    var columnsArray = [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null] // An array with the positional number of the correct order, starts with nulls
+    for (var i = 0; i < array[0].length; i++) {
+        if (array[0][i] == "timestamp") {columnsArray[0] = i}
+        if (array[0][i] == "contract_count_total") {columnsArray[1] = i}
+        if (array[0][i] == "file_count") {columnsArray[2] = i}
+        if (array[0][i] == "file_uploads_in_progress_count") {columnsArray[3] = i}
+        if (array[0][i] == "file_uploaded_bytes") {columnsArray[4] = i}
+        if (array[0][i] == "file_total_bytes") {columnsArray[5] = i}
+        if (array[0][i] == "file_uploaded_bytes") {columnsArray[6] = i}
+        if (array[0][i] == "contract_size_total") {columnsArray[7] = i}
+        if (array[0][i] == "contract_fee_spending_total") {columnsArray[8] = i}
+        if (array[0][i] == "contract_storage_spending_total") {columnsArray[9] = i}
+        if (array[0][i] == "contract_upload_spending_total") {columnsArray[10] = i}
+        if (array[0][i] == "contract_download_spending_total") {columnsArray[11] = i}
+        if (array[0][i] == "contract_funds_remaining_total") {columnsArray[12] = i}
+        if (array[0][i] == "wallet_siacoin_balance") {columnsArray[13] = i}
+        if (array[0][i] == "contract_count_disabled") {columnsArray[14] = i}
+        if (array[0][i] == "contract_size_disabled") {columnsArray[15] = i} 
+    }
+
+    // Checking that all the headers were found
+    for (var i = 0; i < columnsArray.length; i++) {
+        if (columnsArray[i] == null) {
+            console.log("**** ERROR - column not found parsing the CSV file: " + i)
+        }
+    }
+    
+    // Building the compatible array
+    for (var i = 1; i < array.length; i++) { // For each entry in the input array. Skipping the headers line
+        var newEntry = []
+        for (var j = 0; j < columnsArray.length; j++) { // For each column we defined
+            newEntry.push(array[i][columnsArray[j]])
+        }
         newArray.push(newEntry)
     }
 
