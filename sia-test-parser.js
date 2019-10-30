@@ -19,16 +19,16 @@ var testConditions = "10 GB files" // Size of the uploaded files and other diffe
 var siaValue = 0.00197 // Siacoin value at the time of the test. Check CoinMarketCap
 var initialBalance = 10000 // Initial balance on the wallet
 // Other manual variables for the technical sheet
-var testVersion = "1.4.0"
+var testVersion = "1.4.1.2"
 var testTester = "STAC / Fornax"
 var testSystem = "Scaleway C2L: 8 x86 cores, 32 GB RAM, 250 GB SSD, 600Mbps bandwidth"
 var testFilesType = "Synthetic 10GB files"
-var testTerminateCondition = "Upload dropped to <1Mbps for 60 minutes or 10TB uploaded"
+var testTerminateCondition = "Upload dropped to < 125kbps for 60 minutes"
 var testCrashes = "0"
-var testNotes = "Test terminated after 1 day due to sustained upload speed bellow 1Mbps"
+var testNotes = "Test terminated sustained upload speeds bellow 125 kbps"
 var testLink = ""
 // IF THE CSV HAS AN INTERVAL < 1 MINUTE, adjust the number so it checks every x entries. If interval = 1 minute, let "skip" in 2, if 5 seconds, "skip" = 20. Avoids the function to chocke with the csv file processing
-var skip = 2
+var skip = 5
 
 var tsFile = outputPath + "ts" + reportNumber + ".json" // Technical sheet file
 var fileJSON = outputPath + "metrics" + reportNumber + ".json" // Output file
@@ -324,7 +324,7 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
         matrixEntry.SCcostMonth10TBextra = TBmonthExtra
         matrixEntry.USDcostMonth10TBextra = (TBmonthExtra * siaValue).toFixed(2)
         
-        console.log("Average speed for 10TB upload: " + speedTo10TB + " Mbps/Tb/month")
+        console.log("Average speed for 10TB upload: " + speedTo10TB + " Mbps")
         matrixEntry.avgUploadSpeedTo10TB = speedTo10TB
         console.log("Cost for 10TB upload (PLUS fees): " + TBmonthPlusFees + " SC/Tb/month")
         matrixEntry.SCcostMonth10TBfees = TBmonthPlusFees
@@ -366,7 +366,9 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
     
     // Repeat loop if we are not at the end of the array
     if (n < (array.length - 20)) {
-        loop(array, (n + skip), newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry)
+        setTimeout(function(){
+            loop(array, (n + skip), newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry)
+        }, 3); // 3 miliseconds delay, to avoid "stack size exceded" errors
     } else {
         // Final results for the total uploaded data in the test
         var totalUploaded = array[n][4] / 1000000000000
@@ -374,6 +376,8 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
         var speedToFinal = ((array[n][4] / 1000000) / secondsToFinal * 8).toFixed(2) // Speed in Mbps
         var speedToFinal3x = ((array[n][5] / 1000000) / secondsToFinal * 8).toFixed(2) // Speed in Mbps
         var costPlusFees = (array[n][8]/1000000000000000000000000) + (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
+        console.log("\nFinal cost: " + costPlusFees + " SC")
+        console.log("Total uploaded: " + totalUploaded + " TB")
         var costMinusFees = (array[n][9]/1000000000000000000000000) + (array[n][10]/1000000000000000000000000) + (array[n][11]/1000000000000000000000000)
         var TBmonthPlusFees = (costPlusFees / (totalUploaded * 3)).toFixed(2) // Divided by 3 months and 10 TB
         var TBmonthMinusFees = (costMinusFees / (totalUploaded * 3)).toFixed(2) // Divided by 3 months and 10 TB
@@ -400,7 +404,10 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
 
         // File bytes - 3x redundancy stats
         var totalUploaded3x = array[n][5] / 1000000000000
+        console.log("\nUploaded 3x: " + totalUploaded3x + " TB")
         var TBmonthPlusFees3x = (costPlusFees / (totalUploaded3x * 3)).toFixed(2) // Divided by 3 months and 10 TB
+        console.log("Cost per TB/mo 3x PLUS fees: " + TBmonthPlusFees3x + " SC - " + (TBmonthPlusFees3x * siaValue).toFixed(2) + " USD")
+        console
         var TBmonthMinusFees3x = (costMinusFees / (totalUploaded3x * 3)).toFixed(2) // Divided by 3 months and 10 TB
         var TBmonthExtra3x = (costExtra / (totalUploaded3x * 3)).toFixed(2) // Divided by 3 months
         matrixEntry.SCcostMonthTotalExtra3x = TBmonthExtra3x
@@ -420,16 +427,17 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
         var maxFilesBandwidth = 0
         var maxAbsoluteBandwidth = 0
         for (var i = 0; i < newArray.length; i++) {
-            if (newArray[newArray.length-1].filesBandwidth > maxFilesBandwidth) {
-                maxFilesBandwidth = newArray[newArray.length-1].filesBandwidth
+            if (newArray[i].filesBandwidth > maxFilesBandwidth) {
+                maxFilesBandwidth = newArray[i].filesBandwidth
             }
-            if (newArray[newArray.length-1].absoluteBandwidth > maxAbsoluteBandwidth) {
-                maxAbsoluteBandwidth = newArray[newArray.length-1].absoluteBandwidth
+            if (newArray[i].absoluteBandwidth > maxAbsoluteBandwidth) {
+                maxAbsoluteBandwidth = newArray[i].absoluteBandwidth
             }
         }
         matrixEntry.maxFilesBandwidth = maxFilesBandwidth
         matrixEntry.maxAbsoluteBandwidth = maxAbsoluteBandwidth
-        console.log("Max absolute bandwidth: " + maxAbsoluteBandwidth)
+        console.log("Max absolute bandwidth: " + maxAbsoluteBandwidth + " Mbps")
+        console.log("Max files bandwidth: " + maxFilesBandwidth + " Mbps")
 
         // Technical sheet file
         // Print the total amount uploaded to Finish the report
@@ -512,8 +520,8 @@ function createEntry(e, array) {
         "filesTB": filesTB, 
         "absoluteMB": absoluteMB, 
         "filesMB": filesMB, 
-        "absoluteBandwidth": absoluteBandwidth, 
-        "filesBandwidth": filesBandwidth, 
+        "absoluteBandwidth": parseFloat(absoluteBandwidth), 
+        "filesBandwidth": parseFloat(filesBandwidth), 
         "efficiency": efficiency, 
         "fees": fees,
         "storage": storage, 
