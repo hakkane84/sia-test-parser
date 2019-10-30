@@ -152,42 +152,6 @@ newArray.push(entry)
 // 4- Loop invoking. Starts in element 1
 loop(array, 1, newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry)
 
-// 5 - Saving the files
-console.log("Creating the abbreviated report '" + fileJSON + "' with " + newArray.length + " entries")
-console.log("")
-var stream2 = fs.createWriteStream(fileJSON)
-var string2 = JSON.stringify(newArray)
-stream2.write(string2)
-
-// 6- Matrix saving
-//console.log(matrixEntry)
-console.log("Adding the information to the comparison matrix file")
-console.log("")
-
-// Opening the matrix file
-var stream5 = fs.createReadStream(fileMatrix)
-var data5 = '';
-var chunk5;
-stream5.on('readable', function() { //Function just to read the whole file before proceeding
-    while ((chunk5=stream5.read()) != null) {
-        data5 += chunk5;}
-});
-stream5.on('end', function() {
-    if (data5 != "") {
-        var matrix = JSON.parse(data5)
-    } else {
-        var matrix = [] // Ensurig this is an array
-    }
-
-    // Replacing the matrix element with the new matrix entry on the "reportNumber" position
-    matrix[reportNumber - 1] = matrixEntry
-
-    var stream4 = fs.createWriteStream(fileMatrix)
-    var string4 = JSON.stringify(matrix)
-    stream4.write(string4)
-})
-
-
 
 function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, zeroTime, matrixEntry) {
     var time = new Date(array[n][0]).getTime()
@@ -478,6 +442,9 @@ function loop(array, n, newArray, prevTime, prevStorage, prevStorageFileBytes, z
         var stream3 = fs.createWriteStream(tsFile)
         var string3 = JSON.stringify(tsEntry)
         stream3.write(string3)
+
+        // Saves the rest of data in files
+        saveData(newArray, matrixEntry)
     }
 }
 
@@ -540,6 +507,44 @@ function createEntry(e, array) {
     }
 
     return entry
+}
+
+
+function saveData(newArray, matrixEntry) {
+    // 5 - Saving the files
+    console.log("Creating the abbreviated report '" + fileJSON + "' with " + newArray.length + " entries")
+    console.log("")
+    var stream2 = fs.createWriteStream(fileJSON)
+    var string2 = JSON.stringify(newArray)
+    stream2.write(string2)
+
+    // 6- Matrix saving
+    //console.log(matrixEntry)
+    console.log("Adding the information to the comparison matrix file")
+    console.log("")
+
+    // Opening the matrix file
+    var stream5 = fs.createReadStream(fileMatrix)
+    var data5 = '';
+    var chunk5;
+    stream5.on('readable', function() { //Function just to read the whole file before proceeding
+        while ((chunk5=stream5.read()) != null) {
+            data5 += chunk5;}
+    });
+    stream5.on('end', function() {
+        if (data5 != "") {
+            var matrix = JSON.parse(data5)
+        } else {
+            var matrix = [] // Ensurig this is an array
+        }
+
+        // Replacing the matrix element with the new matrix entry on the "reportNumber" position
+        matrix[reportNumber - 1] = matrixEntry
+
+        var stream4 = fs.createWriteStream(fileMatrix)
+        var string4 = JSON.stringify(matrix)
+        stream4.write(string4)
+    })
 }
 
 
